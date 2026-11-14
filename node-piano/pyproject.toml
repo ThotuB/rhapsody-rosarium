@@ -1,9 +1,12 @@
 [project]
 name = "node-piano"
 version = "0.1.0"
-requires-python = ">=3.13"
+# 3.12, pinned in .python-version: lgpio (gpiozero's pin driver with PWM on a Pi) has ready
+# built wheels up to 3.12, so a plain `uv sync` sets up the Pi without compiling anything
+requires-python = ">=3.12"
 dependencies = [
     "gpiozero>=2.0.1.post3",
+    "lgpio>=0.2.2.0",
     "numpy>=2.5.4",
     "requests>=2.34.2",
 ]
