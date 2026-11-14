@@ -18,6 +18,16 @@ export interface Piano {
      * oldest first
      */
     "segments": Segment[] | null;
+
+    /**
+     * clients tuned in to it, the museum included
+     */
+    "listeners": number;
+
+    /**
+     * the museum is one of them
+     */
+    "museum": boolean;
 }
 
 /**
