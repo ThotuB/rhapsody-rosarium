@@ -37,6 +37,9 @@ func main() {
 	sink := flag.String("sink", "device", `where audio goes: "device" (the sound card) or "null" (nowhere, for testing)`)
 	headless := flag.Bool("headless", false, "run without windows, logging what plays")
 	runFor := flag.Duration("for", 0, "with -headless, stop after this long (0 runs until Ctrl+C)")
+	lightsPort := flag.String("lights", "auto",
+		`the board driving the led strips (Carbon V3 or Arduino): a port like /dev/ttyUSB0, "auto" (the first one plugged in), "log" (only log what it'd send) or "off"`)
+	strips := flag.String("strips", "", "comma separated piano ids the led strips follow, in strip order (default: the server's first pianos)")
 	flag.Parse()
 
 	p := player.New()
@@ -50,6 +53,16 @@ func main() {
 	if *tune != "" {
 		core.Tune(*tune)
 	}
+
+	ctx, stopLights := context.WithCancel(context.Background())
+	lightsOff := startLights(ctx, *lightsPort, pianoList(*strips), core)
+	defer func() {
+		stopLights()
+		select { // a moment to switch the strips off
+		case <-lightsOff:
+		case <-time.After(2 * time.Second):
+		}
+	}()
 	if *headless {
 		runHeadless(core, *runFor)
 		return
