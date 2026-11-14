@@ -1,16 +1,15 @@
+"""Continuous microphone recording into numbered MP3 segment files.
 
-"""Continuous microphone recording with persistent MP3 uploads."""
+FFmpeg writes one file per SEGMENT_SECONDS into DIRECTORY, named by its
+sequence number; app.py uploads and removes them.
+"""
 
-import argparse
 import json
 import signal
 import subprocess
 import threading
 import time
 from pathlib import Path
-
-import requests
-import api
 
 
 # Configuration
@@ -19,10 +18,6 @@ DIRECTORY = Path(__file__).parent / "segments"
 STATE = DIRECTORY / "state.json"
 
 SEGMENT_SECONDS = 2
-RETRY_SECONDS = 3
-
-MAX_PENDING_SEGMENTS = 3
-MAX_SEGMENT_AGE = 8
 
 # Prevent concurrent state-file operations
 STATE_LOCK = threading.Lock()
@@ -76,152 +71,11 @@ def segment_files():
 
 
 # ---------------------------
-# Heartbeat
-# ---------------------------
-
-def heartbeat(stop, args):
-    session = requests.Session()
-
-    while not stop.is_set():
-        try:
-            response = api.post_heartbeat(
-                session,
-                args.server,
-                args.id,
-                args.token
-            )
-
-            if not response.ok:
-                print(
-                    f"Heartbeat error: HTTP {response.status_code}",
-                    flush=True
-                )
-
-        except requests.RequestException as exc:
-            print(
-                f"Heartbeat unavailable: {exc}",
-                flush=True
-            )
-
-        stop.wait(10)
-
-
-# ---------------------------
-# Upload worker
-# ---------------------------
-
-def uploader(stop, args, active):
-    session = requests.Session()
-
-    while not stop.is_set():
-        files = segment_files()
-
-        # Never upload the file currently being written.
-        if active.is_set() and files:
-            completed = files[:-1]
-        else:
-            completed = files
-
-        now = time.time()
-
-        # Keep only recent, completed segments.
-        recent = []
-        for path in completed:
-            try:
-                if now - path.stat().st_mtime <= MAX_SEGMENT_AGE:
-                    recent.append(path)
-            except FileNotFoundError:
-                continue
-
-        recent = recent[-MAX_PENDING_SEGMENTS:]
-        keep = set(recent)
-
-        # Remove old or excess completed recordings.
-        for path in completed:
-            if path not in keep:
-                try:
-                    path.unlink()
-                    print(
-                        f"Dropped old segment: {path.name}",
-                        flush=True
-                    )
-                except FileNotFoundError:
-                    pass
-
-        if not recent:
-            stop.wait(0.2)
-            continue
-
-        # Upload recent segments in order.
-        for path in recent:
-            if stop.is_set():
-                return
-
-            try:
-                # Check freshness again before uploading.
-                age = time.time() - path.stat().st_mtime
-
-                if age > MAX_SEGMENT_AGE:
-                    path.unlink()
-                    print(
-                        f"Skipped stale segment: {path.name}",
-                        flush=True
-                    )
-                    continue
-
-                seq = int(path.stem)
-                save_next_seq(seq + 1)
-
-                response = api.post_segment(
-                    session,
-                    args.server,
-                    args.id,
-                    args.token,
-                    path.name,
-                    path.read_bytes(),
-                    seq,
-                )
-
-                if response.ok:
-                    print(
-                        f"Uploaded segment {seq}: "
-                        f"HTTP {response.status_code}",
-                        flush=True
-                    )
-                    path.unlink()
-
-                elif response.status_code == 422:
-                    print(
-                        f"Invalid audio, discarding {path.name}",
-                        flush=True
-                    )
-                    path.unlink()
-
-                else:
-                    print(
-                        f"Upload failed: HTTP "
-                        f"{response.status_code}",
-                        flush=True
-                    )
-                    stop.wait(RETRY_SECONDS)
-                    break
-
-            except FileNotFoundError:
-                continue
-
-            except (requests.RequestException, OSError) as exc:
-                print(
-                    f"Connection unavailable: {exc}",
-                    flush=True
-                )
-                stop.wait(RETRY_SECONDS)
-                break
-
-# ---------------------------
 # Continuous recording
 # ---------------------------
 
 def record_forever(stop, active):
+    """Record until stop is set; active is set while FFmpeg writes a segment."""
     while not stop.is_set():
 
         seq = next_sequence()
@@ -299,61 +153,3 @@ def record_forever(stop, active):
                 flush=True
             )
             stop.wait(3)
-
-
-# ---------------------------
-# Main
-# ---------------------------
-
-def main():
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("--id", required=True)
-    parser.add_argument("--server", required=True)
-    parser.add_argument("--token", required=True)
-
-    args = parser.parse_args()
-    args.server = args.server.rstrip("/")
-
-    DIRECTORY.mkdir(parents=True, exist_ok=True)
-
-    stop = threading.Event()
-    active = threading.Event()
-
-    # Start heartbeat worker
-    heartbeat_thread = threading.Thread(
-        target=heartbeat,
-        args=(stop, args),
-        daemon=True
-    )
-    heartbeat_thread.start()
-
-    # Start upload worker
-    upload_thread = threading.Thread(
-        target=uploader,
-        args=(stop, args, active),
-        daemon=True
-    )
-    upload_thread.start()
-
-    print(
-        "Starting continuous microphone capture...",
-        flush=True
-    )
-
-    try:
-        record_forever(stop, active)
-
-    except KeyboardInterrupt:
-        stop.set()
-
-    finally:
-        stop.set()
-        print(
-            "Recorder stopped. Pending MP3 files remain on disk.",
-            flush=True
-        )
-
-
-if __name__ == "__main__":
-    main()
