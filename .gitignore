@@ -1,1 +1,5 @@
 docs/
+**/segments/
+**/.lgd-nfy*
+**/.venv/
+**/__pycache__/
