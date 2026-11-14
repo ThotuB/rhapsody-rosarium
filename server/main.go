@@ -24,6 +24,7 @@ func main() {
 	data := flag.String("data", "data", "where segments are stored")
 	keep := flag.Int("keep", 30, "segments kept per piano")
 	ffmpeg := flag.String("ffmpeg", "ffmpeg", "ffmpeg binary")
+	logRequests := flag.Bool("log-requests", true, "log every request (method, path, status, size, duration, client)")
 	flag.Parse()
 
 	if _, err := exec.LookPath(*ffmpeg); err != nil {
@@ -38,9 +39,13 @@ func main() {
 		fatal("opening store", err)
 	}
 
+	handler := api.New(st).Handler()
+	if *logRequests {
+		handler = api.LogRequests(handler)
+	}
 	srv := &http.Server{
 		Addr:              *addr,
-		Handler:           api.New(st).Handler(),
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       2 * time.Minute, // uploads over a slow connection
 		IdleTimeout:       2 * time.Minute,

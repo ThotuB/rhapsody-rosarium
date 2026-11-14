@@ -23,7 +23,7 @@ a scenario from a json file (see configs/), flags given on top override its sett
 
     {
       "server": "http://localhost:8080/api",    any of: server, token, segment_seconds, fast
-      "segment_seconds": 10,
+      "segment_seconds": 2,
       "pianos": [
         { "id": "piano-2" },                     plays
         { "id": "piano-5", "mute": true },       online, never plays

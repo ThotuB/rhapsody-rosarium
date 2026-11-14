@@ -27,7 +27,8 @@ const ring = (cls: string, count: number, offset: number, first: number) =>
             `<path class="petal ${cls}" d="${PETAL}" style="--a:${offset + (i * 360) / count}deg;--i:${first + i}"/>`,
     ).join('')
 const ROSE_SVG =
-    '<svg viewBox="-20 -20 40 40" aria-hidden="true">' +
+    // ±32 rather than ±20: room for the bloomed petals (~30) inside the svg's own box
+    '<svg viewBox="-32 -32 64 64" aria-hidden="true">' +
     ring('outer', 5, 0, 0) +
     ring('inner', 5, 36, 5) +
     '<circle class="heart" r="2.8"/>' +

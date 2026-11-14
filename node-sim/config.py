@@ -74,7 +74,10 @@ def parser(description: str | None) -> argparse.ArgumentParser:
         "--token", default="dev", help="node token, {id} is replaced with the node id"
     )
     p.add_argument(
-        "--segment-seconds", type=float, default=10, help="length of each segment"
+        "--segment-seconds",
+        type=float,
+        default=2,
+        help="length of each segment; listeners hear a piano about 2-3 of these late",
     )
     p.add_argument(
         "--fast",

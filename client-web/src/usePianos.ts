@@ -9,7 +9,7 @@ export function usePianos() {
     const { data, error } = useQuery({
         queryKey: ["state"],
         queryFn: ({ signal }) => fetchState(signal),
-        refetchInterval: 5000,
+        refetchInterval: 1000, // new segments show up within a second, part of the delay behind the piano
         refetchIntervalInBackground: true, // keep the tuned station fed while the tab is hidden
         retry: false, // the next poll is the retry
     });

@@ -15,9 +15,12 @@ export type RadioSnapshot = {
 }
 
 const STATIC_SECONDS = 0.9
-const START_BACK = 3 // tuning in starts this many segments before the newest
+// how far behind the piano listeners are: about START_BACK + 1 segments (2 s each from node-sim),
+// the newest is still being recorded. fewer is closer to live but cuts out when one arrives late
+const START_BACK = 2 // tuning in starts this many segments before the newest
 const AHEAD = 2 // segments decoded and scheduled after the one playing
-const LEAD = 0.1 // seconds of head start when playback (re)starts
+const LEAD = 0.1 // seconds of head start when playback starts on tuning in
+const CUSHION = 2 // seconds of head start when it starts again after running dry, so the next segment can arrive
 const FADE = 0.03 // seconds to fade out and in around a gap
 const PAUSE = 0.25 // seconds of silence where a window is missing
 
@@ -154,7 +157,7 @@ class Radio {
         }
     }
 
-    // Line the segment up right where the previous one ends, or just after now if playback had stopped.
+    // Line the segment up right where the previous one ends, or a little after now if playback had stopped.
     // If a window is missing between the two, fade out, pause briefly and fade back in, rather than
     // gluing two unrelated moments together.
     private schedule(seg: Segment, buf: AudioBuffer) {
@@ -162,7 +165,8 @@ class Radio {
         const gen = this.gen
         if (ctx.state === 'suspended') this.set({ status: 'blocked' })
         const now = ctx.currentTime
-        let start = Math.max(this.end, now + LEAD)
+        // tuning in already has START_BACK segments lined up; after running dry there's only this one
+        let start = Math.max(this.end, now + (this.last === null ? LEAD : CUSHION))
         const gap = this.last !== null && !continues(this.last, seg)
         const prev = this.scheduled.at(-1)
         if (gap && prev && prev.end > now) {

@@ -1,6 +1,6 @@
 {
     "server": "http://localhost:8080/api",
-    "segment_seconds": 10,
+    "segment_seconds": 2,
     "pianos": [
         { "id": "piano-2" },
         { "id": "piano-3" },
