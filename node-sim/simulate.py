@@ -50,7 +50,7 @@ from config import Piano, Settings
 from music import Voice
 
 MAX_QUEUED = 20  # segments kept for retrying while the server is unreachable
-HEARTBEAT_SECONDS = 10
+HEARTBEAT_SECONDS = 2  # also how soon the node hears that someone tuned in
 RETRY_SECONDS = 2  # how often failed uploads are retried when nothing new arrives
 
 
@@ -196,23 +196,38 @@ class Node:
             pending.popleft()
 
     def heartbeat(self):
-        """tell the server the node is online, every HEARTBEAT_SECONDS until it stops"""
+        """tell the server the node is online, every HEARTBEAT_SECONDS until it stops,
+        and log who is listening whenever that changes"""
         session = requests.Session()
         failing = False
+        heard = None  # the audience from the last heartbeat
         while self.alive():
             try:
                 r = api.post_heartbeat(session, self.server, self.id, self.token)
                 ok, why = r.ok, str(r.status_code)
-            except requests.RequestException as e:
-                ok, why = False, type(e).__name__
+                audience = r.json() if ok else None
+            except requests.RequestException as e:  # json errors too
+                ok, why, audience = False, type(e).__name__, None
 
             if not ok and not failing:
                 log(self.id, f"heartbeat failed ({why})")
             elif ok and failing:
                 log(self.id, "heartbeat ok again")
+            if audience is not None and audience != heard:
+                log(self.id, describe(audience))
+                heard = audience
 
             failing = not ok
             nap(HEARTBEAT_SECONDS, self.alive)
+
+
+def describe(audience):
+    """a heartbeat's answer, {"listeners": 2, "museum": true}, in words"""
+    n = audience.get("listeners", 0)
+    if not n:
+        return "nobody listening"
+    museum = ", the museum among them" if audience.get("museum") else ""
+    return f"{n} listening{museum}"
 
 
 def log(node_id, message):

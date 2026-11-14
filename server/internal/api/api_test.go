@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"rhapsody-rosarium/internal/listen"
 	"rhapsody-rosarium/internal/piano"
 	"rhapsody-rosarium/internal/store"
 )
@@ -91,14 +92,26 @@ func uploadSeq(h http.Handler, node, token string, audio []byte, seq string) *ht
 }
 
 func heartbeat(h http.Handler, node, token string) int {
-	req := httptest.NewRequest("POST", "/api/heartbeat", strings.NewReader(url.Values{"node": {node}}.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	return heartbeatReply(h, node, token).Code
+}
+
+func heartbeatReply(h http.Handler, node, token string) *httptest.ResponseRecorder {
+	var auth []string
 	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
+		auth = []string{"Authorization", "Bearer " + token}
+	}
+	return postForm(h, "/api/heartbeat", url.Values{"node": {node}}, auth...)
+}
+
+func postForm(h http.Handler, path string, form url.Values, headers ...string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest("POST", path, strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	for i := 0; i+1 < len(headers); i += 2 {
+		req.Header.Set(headers[i], headers[i+1])
 	}
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
-	return rec.Code
+	return rec
 }
 
 func pianosByID(t *testing.T, h http.Handler) map[string]store.PianoView {
@@ -243,8 +256,8 @@ func TestHeartbeat(t *testing.T) {
 	if a := pianosByID(t, h)["a"]; a.State != piano.StateNew || a.LastSeen != nil {
 		t.Errorf("before any heartbeat: %+v", a)
 	}
-	if code := heartbeat(h, "a", "token-a"); code != http.StatusNoContent {
-		t.Fatalf("heartbeat: got %d, want 204", code)
+	if code := heartbeat(h, "a", "token-a"); code != http.StatusOK {
+		t.Fatalf("heartbeat: got %d, want 200", code)
 	}
 	if a := pianosByID(t, h)["a"]; a.State != piano.StateSilent || a.LastSeen == nil || !a.LastSeen.Equal(clock) {
 		t.Errorf("after a heartbeat: %+v", a)
@@ -332,5 +345,54 @@ func TestWindowNumbers(t *testing.T) {
 	restarted := (&API{store: newTestStore(t, dir, 5)}).Handler()
 	if got := seqs(restarted); !slices.Equal(got, want) {
 		t.Errorf("after a restart: got %v, want %v", got, want)
+	}
+}
+
+func TestListening(t *testing.T) {
+	a := &API{store: newTestStore(t, t.TempDir(), 5)}
+	h := a.Handler()
+	listening := func(form url.Values) int { return postForm(h, "/api/listening", form).Code }
+	audience := func() listen.Audience {
+		var got listen.Audience
+		rec := heartbeatReply(h, "a", "token-a")
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatalf("heartbeat reply %q: %v", rec.Body, err)
+		}
+		return got
+	}
+
+	if got := audience(); got.Listeners != 0 || got.Museum {
+		t.Errorf("nobody listening yet: %+v", got)
+	}
+	for name, c := range map[string]struct {
+		form url.Values
+		want int
+	}{
+		"no client id":  {url.Values{"piano": {"a"}}, http.StatusBadRequest},
+		"unknown piano": {url.Values{"client": {"x"}, "piano": {"zzz"}}, http.StatusNotFound},
+	} {
+		if code := listening(c.form); code != c.want {
+			t.Errorf("%s: got %d, want %d", name, code, c.want)
+		}
+	}
+
+	listening(url.Values{"client": {"web-1"}, "piano": {"a"}})
+	listening(url.Values{"client": {"museum"}, "piano": {"a"}, "museum": {"1"}})
+	listening(url.Values{"client": {"web-2"}, "piano": {"b"}})
+	if got := audience(); got.Listeners != 2 || !got.Museum {
+		t.Errorf("web-1 and the museum on a: %+v", got)
+	}
+	if p := pianosByID(t, h); p["a"].Listeners != 2 || !p["a"].Museum || p["b"].Listeners != 1 || p["b"].Museum {
+		t.Errorf("listeners in the state: a %+v, b %+v", p["a"].Audience, p["b"].Audience)
+	}
+
+	listening(url.Values{"client": {"museum"}, "piano": {""}, "museum": {"1"}}) // stopped
+	if got := audience(); got.Listeners != 1 || got.Museum {
+		t.Errorf("after the museum stopped: %+v", got)
+	}
+
+	a.listeners.Now = func() time.Time { return time.Now().Add(time.Minute) }
+	if got := audience(); got.Listeners != 0 {
+		t.Errorf("a client that stops saying it listens should expire: %+v", got)
 	}
 }

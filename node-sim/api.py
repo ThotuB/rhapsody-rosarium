@@ -12,7 +12,11 @@ import requests
 def post_heartbeat(
     session: requests.Session, server: str, node_id: str, token: str, timeout: float = 5
 ) -> requests.Response:
-    """POST <server>/heartbeat: the node is online, even while nobody plays. 204 when accepted."""
+    """POST <server>/heartbeat: the node is online, even while nobody plays.
+
+    200 when accepted, with who is listening to the piano right now:
+    {"listeners": 2, "museum": true}, listeners counts the museum too.
+    """
     return session.post(
         f"{server}/heartbeat",
         headers=_auth(token),

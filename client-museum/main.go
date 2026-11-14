@@ -73,7 +73,11 @@ func runHeadless(core *museum.Core, runFor time.Duration) {
 		ctx, cancel = context.WithTimeout(ctx, runFor)
 		defer cancel()
 	}
-	go core.Run(ctx)
+	done := make(chan struct{})
+	go func() {
+		core.Run(ctx)
+		close(done)
+	}()
 
 	report := func() {
 		v := core.View()
@@ -90,6 +94,7 @@ func runHeadless(core *museum.Core, runFor time.Duration) {
 		select {
 		case <-ctx.Done():
 			report()
+			<-done // lets it tell the server the museum stopped listening
 			return
 		case <-tick.C:
 			report()
@@ -156,8 +161,11 @@ func runWindows(core *museum.Core, p *player.Player) {
 
 	core.OnChange(func() { app.Event.Emit("state", core.View()) })
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go core.Run(ctx)
+	done := make(chan struct{})
+	go func() {
+		core.Run(ctx)
+		close(done)
+	}()
 	go func() {
 		tick := time.NewTicker(50 * time.Millisecond)
 		defer tick.Stop()
@@ -177,4 +185,6 @@ func runWindows(core *museum.Core, p *player.Player) {
 	if err := app.Run(); err != nil {
 		log.Fatal(err)
 	}
+	cancel()
+	<-done // lets it tell the server the museum stopped listening
 }

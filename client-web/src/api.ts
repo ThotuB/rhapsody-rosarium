@@ -27,6 +27,8 @@ export type Piano = {
     lastSeen: string | null // last heartbeat or upload from its node
     lastPlayed: string | null
     segments: Segment[] // oldest first
+    listeners: number // clients tuned in to it, the museum included
+    museum: boolean // the museum installation is one of them
 }
 
 export type State = {
@@ -38,4 +40,19 @@ export async function fetchState(signal?: AbortSignal): Promise<State> {
     const res = await fetch('/api/state', { signal })
     if (!res.ok) throw new Error(`GET /api/state: ${res.status}`)
     return res.json()
+}
+
+// Tells the server what this client is tuned in to, '' once it stopped, so it can count listeners
+// and pass that on to the pianos' nodes. Failures are ignored, it's sent again every few seconds.
+export function postListening(client: string, piano: string) {
+    fetch('/api/listening', { method: 'POST', body: listeningForm(client, piano) }).catch(() => {})
+}
+
+// The same on leaving the page, which a normal fetch might not survive.
+export function beaconListening(client: string, piano: string) {
+    navigator.sendBeacon('/api/listening', listeningForm(client, piano))
+}
+
+function listeningForm(client: string, piano: string) {
+    return new URLSearchParams({ client, piano })
 }

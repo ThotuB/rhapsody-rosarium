@@ -1,5 +1,5 @@
-// Package link is the museum's connection to the server: it reads the pianos' state and
-// downloads their audio segments.
+// Package link is the museum's connection to the server: it reads the pianos' state, downloads
+// their audio segments and says which one the museum listens to.
 package link
 
 import (
@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -29,7 +30,9 @@ type Piano struct {
 	Note       *string    `json:"note"`
 	LastSeen   *time.Time `json:"lastSeen"`
 	LastPlayed *time.Time `json:"lastPlayed"`
-	Segments   []Segment  `json:"segments"` // oldest first
+	Segments   []Segment  `json:"segments"`  // oldest first
+	Listeners  int        `json:"listeners"` // clients tuned in to it, the museum included
+	Museum     bool       `json:"museum"`    // the museum is one of them
 }
 
 // State mirrors the server's GET /api/state.
@@ -63,6 +66,26 @@ func (c *Client) State(ctx context.Context) (State, error) {
 // Download fetches a segment's audio, a wav file.
 func (c *Client) Download(ctx context.Context, seg Segment) ([]byte, error) {
 	return c.get(ctx, seg.URL)
+}
+
+// Listening tells the server the museum is tuned in to the piano, "" once it stopped. The server
+// forgets it after 15 s, so it has to be repeated while listening.
+func (c *Client) Listening(ctx context.Context, piano string) error {
+	form := url.Values{"client": {"museum"}, "piano": {piano}, "museum": {"1"}}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.server+"/api/listening", strings.NewReader(form.Encode()))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	res, err := c.http.Do(req)
+	if err != nil {
+		return err
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("POST /api/listening: %s", res.Status)
+	}
+	return nil
 }
 
 func (c *Client) get(ctx context.Context, path string) ([]byte, error) {

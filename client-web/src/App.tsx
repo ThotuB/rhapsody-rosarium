@@ -3,11 +3,13 @@ import { Panel } from './components/Panel'
 import { PianoMap } from './components/PianoMap'
 import { radio, useRadio } from './radio'
 import { playable } from './time'
+import { useListening } from './useListening'
 import { usePianos } from './usePianos'
 
 export default function App() {
     const { pianos, now, error } = usePianos()
     const tuned = useRadio()
+    useListening(tuned.pianoId)
 
     // keep the tuned station's segment list fresh
     useEffect(() => {

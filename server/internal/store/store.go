@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"rhapsody-rosarium/internal/listen"
 	"rhapsody-rosarium/internal/piano"
 )
 
@@ -110,6 +111,12 @@ func NewStore(dir string, keep int, ffmpeg string, cfgs []piano.Config) (*Store,
 func (s *Store) Authorize(id, token string) bool {
 	p, ok := s.pianos[id]
 	return ok && tokenEqual(token, p.cfg.Token)
+}
+
+// Has reports whether the piano is in the config.
+func (s *Store) Has(id string) bool {
+	_, ok := s.pianos[id]
+	return ok
 }
 
 // SegmentPath returns where a stored segment of the piano lives on disk, if file is a valid segment name.
@@ -252,6 +259,9 @@ type PianoView struct {
 	LastSeen   *time.Time    `json:"lastSeen"`
 	LastPlayed *time.Time    `json:"lastPlayed"`
 	Segments   []SegmentView `json:"segments"` // oldest first
+
+	// listeners and museum, filled in by the api: the store doesn't know who listens
+	listen.Audience
 }
 
 func segmentView(id string, g segment) SegmentView {

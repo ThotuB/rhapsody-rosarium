@@ -12,7 +12,10 @@ import (
 	"rhapsody-rosarium/museum/internal/player"
 )
 
-const pollEvery = time.Second // new segments are picked up within this, part of the delay behind the piano
+const (
+	pollEvery      = time.Second     // new segments are picked up within this, part of the delay behind the piano
+	listeningEvery = 5 * time.Second // the server forgets a listener after 15 s without hearing from it
+)
 
 // View is everything the museum's windows show, sent to them as the "state" event.
 type View struct {
@@ -31,6 +34,10 @@ type Core struct {
 	link   *link.Client
 	player *player.Player
 	kick   chan struct{} // poll right away, e.g. after tuning in
+
+	// what the server was last told the museum listens to, and when; only used from Run
+	said   string
+	saidAt time.Time
 
 	mu       sync.Mutex
 	state    link.State
@@ -70,6 +77,11 @@ func (c *Core) Run(ctx context.Context) {
 		c.step(ctx)
 		select {
 		case <-ctx.Done():
+			if c.said != "" { // shutting down: stopped listening, rather than waiting for the server to forget it
+				bye, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+				defer cancel()
+				c.link.Listening(bye, "")
+			}
 			return
 		case <-tick.C:
 		case <-c.kick:
@@ -87,9 +99,24 @@ func (c *Core) step(ctx context.Context) {
 	}
 	c.mu.Unlock()
 	if err == nil {
+		c.sayListening(ctx)
 		c.feed(ctx, state)
 	}
 	c.changed()
+}
+
+// sayListening tells the server what the museum is tuned in to, right after a change and again every
+// few seconds while listening, so the server can pass it on to the piano's node.
+func (c *Core) sayListening(ctx context.Context) {
+	tuned := c.player.Tuned()
+	if tuned == c.said && (tuned == "" || time.Since(c.saidAt) < listeningEvery) {
+		return
+	}
+	if err := c.link.Listening(ctx, tuned); err != nil {
+		slog.Warn("telling the server what the museum listens to", "err", err) // tried again on the next poll
+		return
+	}
+	c.said, c.saidAt = tuned, time.Now()
 }
 
 // feed downloads what the tuned piano has that the player still needs, in order.

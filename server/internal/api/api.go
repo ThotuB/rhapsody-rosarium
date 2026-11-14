@@ -11,13 +11,15 @@ import (
 	"strings"
 	"time"
 
+	"rhapsody-rosarium/internal/listen"
 	"rhapsody-rosarium/internal/store"
 )
 
 const maxUpload = 32 << 20
 
 type API struct {
-	store *store.Store
+	store     *store.Store
+	listeners listen.Table
 }
 
 func New(s *store.Store) *API {
@@ -28,6 +30,7 @@ func (a *API) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/segments", a.postSegment)
 	mux.HandleFunc("POST /api/heartbeat", a.postHeartbeat)
+	mux.HandleFunc("POST /api/listening", a.postListening)
 	mux.HandleFunc("GET /api/state", a.getState)
 	mux.HandleFunc("GET /api/audio/{piano}/{file}", a.getAudio)
 	return mux
@@ -97,7 +100,8 @@ func (a *API) postSegment(w http.ResponseWriter, r *http.Request) {
 }
 
 // postHeartbeat lets a node say it's alive between uploads, so a piano nobody plays shows as silent, not offline.
-// Takes a form with `node`, authorised by that piano's token.
+// Takes a form with `node`, authorised by that piano's token. Answers with who is listening to the piano,
+// {"listeners": 2, "museum": true}, so the node can react to its audience.
 func (a *API) postHeartbeat(w http.ResponseWriter, r *http.Request) {
 	token := bearer(r)
 	if !a.store.ValidToken(token) {
@@ -111,6 +115,24 @@ func (a *API) postHeartbeat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.store.Seen(id)
+	writeJSON(w, a.listeners.Of(id))
+}
+
+// postListening is a client saying what it's tuned in to, again every few seconds while it listens.
+// Takes a form with `client` (any id the client made up, the same on every call), `piano` (empty once it
+// stopped) and `museum=1` from the museum installation. No token: listeners are anonymous.
+func (a *API) postListening(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<10)
+	client, id := r.FormValue("client"), r.FormValue("piano")
+	if client == "" || len(client) > 64 {
+		http.Error(w, "client must be an id of 1 to 64 characters", http.StatusBadRequest)
+		return
+	}
+	if id != "" && !a.store.Has(id) {
+		http.Error(w, "unknown piano", http.StatusNotFound)
+		return
+	}
+	a.listeners.Mark(client, id, r.FormValue("museum") == "1")
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -121,7 +143,11 @@ type stateResponse struct {
 
 func (a *API) getState(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
-	writeJSON(w, stateResponse{Now: time.Now(), Pianos: a.store.Snapshot()})
+	pianos, listening := a.store.Snapshot(), a.listeners.All()
+	for i := range pianos {
+		pianos[i].Audience = listening[pianos[i].ID]
+	}
+	writeJSON(w, stateResponse{Now: time.Now(), Pianos: pianos})
 }
 
 func (a *API) getAudio(w http.ResponseWriter, r *http.Request) {
