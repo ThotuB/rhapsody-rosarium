@@ -1,0 +1,4 @@
+data/
+bin/
+# the binary a plain `go build` writes here
+/rhapsody-rosarium

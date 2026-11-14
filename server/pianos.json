@@ -1,0 +1,12 @@
+[
+	{ "id": "piano-1", "name": "Parcul Central", "lat": 45.751795, "lng": 21.220549, "token": "dev", "status": "gone", "note": "taken away in spring" },
+	{ "id": "piano-2", "name": "Piața Libertății", "lat": 45.755884, "lng": 21.227531, "token": "dev" },
+	{ "id": "piano-3", "name": "Curtea Berarilor", "lat": 45.756387, "lng": 21.231905, "token": "dev" },
+	{ "id": "piano-4", "name": "Cărturești", "lat": 45.753112, "lng": 21.22502, "token": "dev" },
+	{ "id": "piano-5", "name": "Sinagoga din Cetate", "lat": 45.756461, "lng": 21.226126, "token": "dev" },
+	{ "id": "piano-6", "name": "Iulius Mall – Atrium", "lat": 45.766122, "lng": 21.227622, "token": "dev" },
+	{ "id": "piano-7", "name": "Iulius Mall – Etaj", "lat": 45.766234, "lng": 21.228861, "token": "dev" },
+	{ "id": "piano-8", "name": "Facultatea de Arte și Design", "lat": 45.759574, "lng": 21.229596, "token": "dev" },
+	{ "id": "piano-9", "name": "Biblioteca Centrală Universitară", "lat": 45.747351, "lng": 21.2326, "token": "dev" },
+	{ "id": "piano-10", "name": "Muzeul de Artă", "lat": 45.757354, "lng": 21.229291, "token": "dev", "status": "broken", "note": "out of tune, waiting for a tuner" }
+]
