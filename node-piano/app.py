@@ -2,7 +2,7 @@
 
 record.py writes numbered segment files; this uploads them in order and sends
 a heartbeat, whose reply says how many people listen to this piano, which sets
-the LED's brightness (see lights.py).
+how fast the LED pulses (see lights.py).
 
     uv run app.py --id piano-2 --server http://10.69.251.6:8080/api --token dev
 """
@@ -35,7 +35,7 @@ def heartbeat(stop, args, light):
     heard = None  # Last listener count, to print only changes
 
     while not stop.is_set():
-        listeners = 0  # Fade to minimum brightness on connection loss
+        listeners = 0  # Fade out on connection loss
 
         try:
             response = api.post_heartbeat(

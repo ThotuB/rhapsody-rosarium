@@ -1,30 +1,27 @@
-"""Purple LED whose brightness follows how many people listen to this piano.
+"""Purple LED that pulses faster the more people listen to this piano.
 
-record.py's heartbeat passes on the listener count from the server's reply,
-the light fades towards the matching brightness in its own thread.
+app.py's heartbeat passes on the listener count from the server's reply:
+0 listeners is off, 1 pulses slowly, and every extra listener pulses faster.
+The light runs in its own thread.
 """
 
+import math
 import threading
 import time
 
 from gpiozero import DigitalOutputDevice, PWMOutputDevice
 
 
-# Brightness configuration
-MIN_BRIGHTNESS = 0
-MAX_LISTENERS = 3  # Full brightness from this many listeners
-FADE_SPEED = 0.6  # Brightness units per second
-UPDATE_INTERVAL = 0.05
+# Pulse configuration
+PULSES_PER_LISTENER = 0.25  # Pulses per second added by each listener: 1 -> every 4 s, 2 -> every 2 s
+MAX_PULSES = 2.5  # Pulses per second at most, from 10 listeners on
+FADE_SPEED = 0.6  # How fast the light fades in / out when listeners come and go, per second
+UPDATE_INTERVAL = 0.02
 
 
-def brightness_for(listeners):
-    """Map listener count to brightness (0.0 to 1.0)."""
-    listeners = max(0, min(listeners, MAX_LISTENERS))
-
-    return MIN_BRIGHTNESS + (
-        (1.0 - MIN_BRIGHTNESS)
-        * listeners / MAX_LISTENERS
-    )
+def pulses_for(listeners):
+    """Pulses per second for a listener count, 0 for nobody."""
+    return min(max(0, listeners) * PULSES_PER_LISTENER, MAX_PULSES)
 
 
 class Light:
@@ -40,11 +37,11 @@ class Light:
         self.blue = DigitalOutputDevice(22, initial_value=False)  # ON
 
         self.lock = threading.Lock()
-        self.target = MIN_BRIGHTNESS
+        self.pulses = 0.0  # Pulses per second, 0 is off
         self.thread = None
 
     def start(self, stop):
-        """Fade in a thread of its own until stop is set."""
+        """Pulse in a thread of its own until stop is set."""
         self.thread = threading.Thread(
             target=self.run,
             args=(stop,),
@@ -53,38 +50,44 @@ class Light:
         self.thread.start()
 
     def show(self, listeners):
-        """Fade to the brightness for this many listeners."""
+        """Pulse at the speed for this many listeners."""
         with self.lock:
-            self.target = brightness_for(listeners)
+            self.pulses = pulses_for(listeners)
 
     def run(self, stop):
-        """Gradually approach the target brightness until stop is set."""
-        current = 0.0
+        """Pulse until stop is set."""
+        phase = 0.0  # Position in the pulse, 0 to 1: speed changes carry on from here, no jumps
+        level = 0.0  # Fades to 1 while anyone listens, to 0 once nobody does
+        rate = 0.0
         last_time = time.monotonic()
 
         while not stop.is_set():
             now = time.monotonic()
-            max_change = FADE_SPEED * (now - last_time)
+            dt = now - last_time
             last_time = now
 
             with self.lock:
-                difference = self.target - current
+                # Nobody listening: finish fading out at the last speed
+                rate = self.pulses or rate
+                on = self.pulses > 0
 
-            if abs(difference) <= max_change:
-                current += difference
-            elif difference > 0:
-                current += max_change
+            phase = (phase + rate * dt) % 1.0
+
+            if on:
+                level = min(1.0, level + FADE_SPEED * dt)
             else:
-                current -= max_change
+                level = max(0.0, level - FADE_SPEED * dt)
 
-            current = max(0.0, min(1.0, current))
-            self.ena.value = current
-            self.enb.value = current
+            # Smoothly OFF -> ON -> OFF once per pulse
+            brightness = level * (1 - math.cos(2 * math.pi * phase)) / 2
+
+            self.ena.value = brightness
+            self.enb.value = brightness
 
             stop.wait(UPDATE_INTERVAL)
 
     def close(self):
-        """Switch off, once the fading thread saw stop."""
+        """Switch off, once the pulsing thread saw stop."""
         if self.thread is not None:
             self.thread.join(timeout=1)
 
