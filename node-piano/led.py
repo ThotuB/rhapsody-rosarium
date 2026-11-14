@@ -36,6 +36,8 @@ def breathe(duration=4, steps=100):
 
 
 try:
+    ena.value = 1
+    enb.value = 1
     # Fixed color: RED + BLUE = PURPLE
     red.off()       # IN1 LOW, red channel ON
     green.on()      # IN2 HIGH, green channel OFF
