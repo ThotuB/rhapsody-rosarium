@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=museum
+Exec=museum
+Icon=museum
+Categories=Development;
+Terminal=false
+Keywords=wails
+Version=1.0
+StartupNotify=false

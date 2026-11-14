@@ -1,0 +1,33 @@
+version: '3'
+
+vars:
+  APP_NAME: "museum"
+  BIN_DIR: "bin"
+  PACKAGE_MANAGER: '{{.PACKAGE_MANAGER | default "npm"}}'
+  VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
+
+# only linux: the museum machine runs linux
+includes:
+  common: ./build/Taskfile.yml
+  linux: ./build/linux/Taskfile.yml
+
+tasks:
+  build:
+    summary: Builds the application
+    cmds:
+      - task: linux:build
+
+  package:
+    summary: Packages a production build of the application (AppImage, deb, rpm, aur)
+    cmds:
+      - task: linux:package
+
+  run:
+    summary: Runs the application
+    cmds:
+      - task: linux:run
+
+  dev:
+    summary: Runs the application in development mode
+    cmds:
+      - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}

@@ -1,0 +1,234 @@
+/* Copied from client-web/src/index.css: the same colours, status dots and rose markers.
+   A shared package can replace the copy later. */
+@import 'tailwindcss';
+
+/* colours as tailwind tokens: bg-page, text-ink, border-line, bg-rose/10, ... */
+@theme {
+    --color-page: #faf7f5;
+    --color-surface: #ffffff;
+    --color-ink: #1d1a1f;
+    --color-muted: #6e6873;
+    --color-line: #e7e1e3;
+    --color-rose: #d6336c;
+    --color-idle: #a9a2ad;
+    --color-wilt: #8c6b5d;
+
+    --shadow-soft: 0 8px 24px rgb(0 0 0 / 0.12);
+    --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+
+    --animate-ping-ring: ping-ring 1.6s ease-out infinite;
+    @keyframes ping-ring {
+        from {
+            box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-rose) 60%, transparent);
+        }
+        to {
+            box-shadow: 0 0 0 12px transparent;
+        }
+    }
+}
+
+/* dark mode swaps the same tokens, so every utility follows without dark: variants */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-page: #141216;
+        --color-surface: #1d1a20;
+        --color-ink: #f2eef3;
+        --color-muted: #a39ca8;
+        --color-line: #2f2a33;
+        --color-rose: #f06595;
+        --color-idle: #6c6572;
+        --color-wilt: #a3806f;
+        --shadow-soft: 0 8px 24px rgb(0 0 0 / 0.5);
+    }
+}
+
+@layer base {
+    :root {
+        color-scheme: light dark;
+        -webkit-font-smoothing: antialiased;
+        /* museum only, not in the client-web copy: no pinch zoom of the page (see src/noZoom.ts) */
+        touch-action: pan-x pan-y;
+    }
+
+    body {
+        @apply bg-page text-ink;
+    }
+}
+
+/* the dark map style is near-black (#0c0c0c), lift it to a charcoal grey.
+   only the map canvas is filtered, the rose markers are separate elements and keep their colours */
+.maplibregl-canvas {
+    filter: contrast(0.75) brightness(1.15);
+}
+
+/* the status dot, shared by the station list and the map markers (plain DOM, not React),
+   coloured by the data-state of whatever contains it */
+@layer components {
+    .dot {
+        @apply size-3 flex-none rounded-full bg-idle;
+    }
+
+    [data-state='recent'] .dot {
+        background: color-mix(in oklab, var(--color-rose) 55%, var(--color-idle));
+    }
+
+    [data-state='live'] .dot {
+        @apply animate-ping-ring bg-rose motion-reduce:animate-none;
+    }
+
+    [data-state='new'] .dot {
+        background: color-mix(in oklab, var(--color-idle) 45%, transparent);
+    }
+
+    [data-state='offline'] .dot {
+        @apply bg-transparent ring-2 ring-idle ring-inset;
+    }
+
+    [data-state='broken'] .dot {
+        @apply bg-wilt;
+    }
+
+    [data-state='gone'] .dot {
+        @apply border border-dashed border-idle bg-transparent;
+    }
+
+    /* map markers: a rose bud, coloured by data-state like the dot, that blooms while data-tuned */
+    .rose-marker {
+        --petal: var(--color-idle);
+        @apply relative size-12 cursor-pointer;
+    }
+
+    /* the open rose spills well past the marker, keep it above its neighbours */
+    .rose-marker[data-tuned] {
+        z-index: 1;
+    }
+
+    [data-state='new'].rose-marker {
+        --petal: color-mix(in oklab, var(--color-idle) 55%, white);
+    }
+
+    [data-state='broken'].rose-marker {
+        --petal: var(--color-wilt);
+    }
+
+    [data-state='recent'].rose-marker {
+        --petal: color-mix(in oklab, var(--color-rose) 55%, var(--color-idle));
+    }
+
+    [data-state='live'].rose-marker {
+        --petal: var(--color-rose);
+    }
+
+    /* drawn 1.6× the marker and centred on it (its viewBox is 1.6× the bud's), so the bloomed petals
+       fit inside the svg's own box: some web views, like webkitgtk in the museum app, clip anything
+       outside it. the marker itself stays the size of the bud, so clicks don't reach over neighbours */
+    .rose-marker svg {
+        @apply pointer-events-none absolute top-1/2 left-1/2 size-[160%] -translate-1/2 drop-shadow-[0_2px_2px_rgb(0_0_0/0.35)] transition-transform duration-150;
+    }
+
+    .rose-marker:active svg {
+        scale: 0.85;
+    }
+
+    /* turns slowly while its piano is playing; pausing instead of removing the animation
+       means it never snaps back to the start angle */
+    .rose-marker svg {
+        animation: rose-spin 40s linear infinite paused;
+    }
+
+    .rose-marker[data-playing] svg {
+        animation-play-state: running;
+    }
+
+    @keyframes rose-spin {
+        to {
+            rotate: 360deg;
+        }
+    }
+
+    .rose-marker .petal {
+        /* the svg's origin is the centre of the flower, petals rotate and grow around it */
+        transform-box: view-box;
+        transform-origin: 0 0;
+        stroke: white;
+        stroke-width: 0.7;
+        stroke-linejoin: round;
+        transition: transform 650ms cubic-bezier(0.34, 1.56, 0.64, 1) calc(var(--i) * 35ms);
+    }
+
+    .rose-marker .outer {
+        fill: var(--petal);
+        transform: rotate(calc(var(--a) - 30deg)) scale(0.75);
+    }
+
+    .rose-marker .inner {
+        fill: color-mix(in oklab, var(--petal) 78%, black);
+        transform: rotate(calc(var(--a) - 50deg)) scale(0.62);
+    }
+
+    .rose-marker:hover .outer {
+        transform: rotate(calc(var(--a) - 20deg)) scale(0.88);
+    }
+
+    .rose-marker[data-tuned] .outer {
+        transform: rotate(var(--a)) scale(1.7);
+    }
+
+    .rose-marker[data-tuned] .inner {
+        transform: rotate(var(--a)) scale(1.15);
+    }
+
+    .rose-marker .heart {
+        fill: color-mix(in oklab, var(--petal) 55%, black);
+    }
+
+    /* states where nobody can play right now: a small grey bud for a node that never connected,
+       a faded rose while offline, a wilted one when broken and only an outline when gone */
+    [data-state='new'].rose-marker svg {
+        scale: 0.8;
+    }
+
+    [data-state='offline'].rose-marker svg {
+        opacity: 0.5;
+    }
+
+    /* petals of uneven size and angle, drooping instead of furled */
+    [data-state='broken'].rose-marker:not([data-tuned]) .outer {
+        transform: rotate(calc(var(--a) + 28deg * sin(calc(var(--i) * 97deg))))
+            scale(calc(0.66 + 0.2 * sin(calc(var(--i) * 151deg))));
+    }
+
+    [data-state='broken'].rose-marker:not([data-tuned]) .inner {
+        transform: rotate(calc(var(--a) - 20deg * sin(calc(var(--i) * 71deg))))
+            scale(calc(0.5 + 0.12 * sin(calc(var(--i) * 113deg))));
+    }
+
+    [data-state='gone'].rose-marker svg {
+        filter: none;
+        opacity: 0.8;
+    }
+
+    [data-state='gone'].rose-marker .petal,
+    [data-state='gone'].rose-marker .heart {
+        fill: transparent;
+        stroke: var(--color-idle);
+        stroke-dasharray: 2 1.5;
+    }
+
+    /* the live pulse, behind the flower */
+    .rose-halo {
+        @apply absolute inset-[30%] rounded-full;
+    }
+
+    [data-state='live'] .rose-halo {
+        @apply animate-ping-ring motion-reduce:animate-none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .rose-marker .petal,
+        .rose-marker svg {
+            transition: none;
+            animation: none;
+        }
+    }
+}
