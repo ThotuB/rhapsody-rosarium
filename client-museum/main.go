@@ -131,25 +131,29 @@ func runHeadless(core *museum.Core, runFor time.Duration) {
 
 // runWindows opens the interface and projector windows and pushes state and loudness to them.
 func runWindows(core *museum.Core, p *player.Player, video string) {
+	// resolved once, against the folder the app started from, and logged, so a missing video says where it looked
+	if abs, err := filepath.Abs(video); err == nil {
+		video = abs
+	}
+	introURL := serveIntroVideo(video)
+	if info, err := os.Stat(video); err != nil {
+		slog.Warn("projector video not found, the projector will offer the map instead", "path", video)
+	} else {
+		slog.Info("projector video", "path", video, "MB", info.Size()>>20, "url", introURL)
+	}
+
 	app := application.New(application.Options{
 		Name:        "Rhapsody Rosarium museum",
 		Description: "The museum installation of Rhapsody Rosarium",
 		Services: []application.Service{
-			application.NewService(&MuseumService{core: core}),
+			application.NewService(&MuseumService{core: core, video: video, introURL: introURL}),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
 			Middleware: func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if r.URL.Path == "/projector-intro.mp4" {
-						// Serve the requested video directly, including byte-range seeking;
-						// don't embed a 184 MB file into every Go build.
-						path, err := filepath.Abs(video)
-						if err != nil {
-							http.Error(w, "Video unavailable", http.StatusNotFound)
-							return
-						}
-						http.ServeFile(w, r, path)
+					if r.URL.Path == introPath { // on Linux it's served from 127.0.0.1 instead, see video.go
+						introHandler(video).ServeHTTP(w, r)
 						return
 					}
 					next.ServeHTTP(w, r)

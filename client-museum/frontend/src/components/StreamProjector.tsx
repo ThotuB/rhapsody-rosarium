@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { noteName, notesAt } from '../piano'
-import { tune, useMuseum } from '../useMuseum'
+import { introVideo, tune, useMuseum } from '../useMuseum'
 import { usePlayback } from '../usePlayback'
 import { PianoKeyboard } from './PianoKeyboard'
 import { PianoMap } from './PianoMap'
@@ -12,8 +12,14 @@ export function StreamProjector() {
     const video = useRef<HTMLVideoElement>(null)
     const [phase, setPhase] = useState<'intro' | 'map'>('intro')
     const [videoError, setVideoError] = useState('')
-    const [muted, setMuted] = useState(true)
+    // starts with sound: the museum's web view lets videos autoplay unmuted (if it refuses, "Play film" shows)
+    const [muted, setMuted] = useState(false)
     const [blocked, setBlocked] = useState(false)
+    // where the video is loaded from: the app's own path, or on Linux a local server (see video.go)
+    const [videoSrc, setVideoSrc] = useState<string>()
+    useEffect(() => {
+        introVideo().then((info) => setVideoSrc(info.url)).catch(() => setVideoSrc('/projector-intro.mp4'))
+    }, [])
     const piano = view?.pianos.find((p) => p.id === view.tuned)
     // Drop old-piano events immediately when the operator selects another station.
     const current = playback?.piano === view?.tuned ? playback : null
@@ -22,6 +28,15 @@ export function StreamProjector() {
     function showMap() {
         video.current?.pause()
         setPhase('map')
+    }
+
+    // Says where the video was looked for: either no file is there, or one is and the web view can't play it.
+    async function explainVideoError() {
+        const playback = video.current?.error?.message || `media error ${video.current?.error?.code ?? '?'}`
+        const info = await introVideo().catch(() => null)
+        if (!info) setVideoError(`The opening video could not be loaded (${playback}). Check the -video path, or continue to the map.`)
+        else if (!info.found) setVideoError(`No opening video at ${info.path}. Put it there or start with -video <path>, or continue to the map.`)
+        else setVideoError(`The opening video at ${info.path} (${Math.round(info.size / 2 ** 20)} MB) was found but can't be played (${playback}). On Linux this is usually a missing GStreamer H.264 decoder. Or continue to the map.`)
     }
 
     async function playIntro(restart: boolean) {
@@ -56,9 +71,9 @@ export function StreamProjector() {
         </section>
 
         <section className="projector-video-layer" aria-label="Opening film" aria-hidden={phase !== 'intro'} inert={phase !== 'intro'}>
-            <video ref={video} src="/projector-intro.mp4" autoPlay muted={muted} playsInline preload="auto"
+            <video ref={video} src={videoSrc} autoPlay muted={muted} playsInline preload="auto"
                 onEnded={showMap} onPlay={() => setBlocked(false)}
-                onError={() => setVideoError('The opening video could not be loaded. Check the -video path, or continue to the map.')}
+                onError={() => void explainVideoError()}
                 onCanPlay={() => { if (phase === 'intro' && video.current?.paused) void playIntro(false) }} />
             <div className="projector-video-shade" />
             <div className="projector-film-caption"><span>RHAPSODY ROSARIUM</span><p>A city. A piano. A moment.</p></div>

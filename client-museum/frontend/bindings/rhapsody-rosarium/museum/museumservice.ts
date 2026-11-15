@@ -14,6 +14,18 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 // @ts-ignore: Unused imports
 import * as museum$0 from "./internal/museum/models.js";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as $models from "./models.js";
+
+/**
+ * IntroVideo says where the opening video comes from, so the projector can load it, and say where it
+ * looked when it can't play it.
+ */
+export function IntroVideo(): $CancellablePromise<$models.IntroVideo> {
+    return $Call.ByID(2816601296);
+}
+
 export function Playback(): $CancellablePromise<museum$0.Playback> {
     return $Call.ByID(73980428);
 }

@@ -24,3 +24,5 @@ export const tune = (id: string) => MuseumService.Tune(id)
 export const stop = () => MuseumService.Stop()
 // the colour of the light at a piano, "#rrggbb"; its node shows it within a heartbeat (~2 s)
 export const setLED = (id: string, colour: string) => MuseumService.SetLED(id, colour)
+// where the projector's opening video is read from (-video), and whether a file is there
+export const introVideo = () => MuseumService.IntroVideo()

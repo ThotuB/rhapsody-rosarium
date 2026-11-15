@@ -1,10 +1,34 @@
 package main
 
-import "rhapsody-rosarium/museum/internal/museum"
+import (
+	"os"
+
+	"rhapsody-rosarium/museum/internal/museum"
+)
 
 // MuseumService is what the museum's windows can call. Changes come back as "state" events.
 type MuseumService struct {
-	core *museum.Core
+	core     *museum.Core
+	video    string // the projector's opening video, an absolute path (-video)
+	introURL string // where the projector loads it from, see video.go
+}
+
+// IntroVideo is where the projector's opening video is read from, and whether a file is there.
+type IntroVideo struct {
+	URL   string `json:"url"`   // what the projector's <video> loads
+	Path  string `json:"path"`  // the file, absolute
+	Found bool   `json:"found"` // a file is there
+	Size  int64  `json:"size"`  // in bytes, 0 if not found
+}
+
+// IntroVideo says where the opening video comes from, so the projector can load it, and say where it
+// looked when it can't play it.
+func (s *MuseumService) IntroVideo() IntroVideo {
+	v := IntroVideo{URL: s.introURL, Path: s.video}
+	if info, err := os.Stat(s.video); err == nil && info.Mode().IsRegular() {
+		v.Found, v.Size = true, info.Size()
+	}
+	return v
 }
 
 // State returns the current view, for a window that just opened.

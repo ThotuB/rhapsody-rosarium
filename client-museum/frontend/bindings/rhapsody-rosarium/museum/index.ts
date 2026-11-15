@@ -5,3 +5,7 @@ import * as MuseumService from "./museumservice.js";
 export {
     MuseumService
 };
+
+export type {
+    IntroVideo
+} from "./models.js";
