@@ -37,6 +37,16 @@ const int PINS[] = {3, 5, 6, 9, 10, 11};
 const uint8_t STRIPS = sizeof(PINS) / sizeof(PINS[0]);
 const unsigned long TICK_MS = 10;
 
+// PWM steps. Brightness is squared for the eye (see gammaCorrect), which leaves few steps at the
+// dim end: with 8 bits a pulse up to a quarter brightness gets only 16 and looks jerky, so boards
+// that can (the Magma Splash, the Carbon V3) use 12 bits. The Uno / Nano only have 8
+#if defined(ARDUINO_ARCH_AVR)
+const int PWM_BITS = 8;
+#else
+const int PWM_BITS = 12;
+#endif
+const long PWM_MAX = (1L << PWM_BITS) - 1;
+
 struct Strip {
   float level;              // brightness now, 0-255, before the pulse
   float from, to;           // fading from -> to
@@ -54,6 +64,9 @@ bool lineTooLong = false;
 unsigned long lastTick = 0;
 
 void setup() {
+#if !defined(ARDUINO_ARCH_AVR)
+  analogWriteResolution(PWM_BITS);
+#endif
   for (uint8_t i = 0; i < STRIPS; i++) {
     pinMode(PINS[i], OUTPUT);
     analogWrite(PINS[i], 0);
@@ -92,7 +105,10 @@ void update(Strip &s, int pin, unsigned long now, float dt) {
   float brightness = s.level;
   if (s.rate > 0) {
     float before = s.phase;
-    s.phase += s.rate * dt;
+    // stopping: a slow pulse hurries to its brightest point, within half a second, so a strip that's
+    // asked to stop pulsing (e.g. to follow the sound) doesn't keep pulsing for seconds
+    float rate = s.nextRate == 0 ? max(s.rate, 2.0f) : s.rate;
+    s.phase += rate * dt;
     s.phase -= floor(s.phase);
     // stopping: once the pulse passes its brightest point it stays there, steady at its level
     if (s.nextRate == 0 && before < 0.5 && s.phase >= 0.5) {
@@ -106,10 +122,10 @@ void update(Strip &s, int pin, unsigned long now, float dt) {
 }
 
 // eyes see brightness roughly as the square of the PWM duty: without this, the low end of a
-// fade looks like steps and the top half hardly changes
-uint8_t gammaCorrect(float level) {
+// fade looks like steps and the top half hardly changes. level is 0-255, the result 0-PWM_MAX
+long gammaCorrect(float level) {
   float x = constrain(level, 0, 255) / 255.0;
-  return (uint8_t)(x * x * 255 + 0.5);
+  return (long)(x * x * PWM_MAX + 0.5);
 }
 
 void readCommands() {
