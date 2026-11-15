@@ -19,6 +19,13 @@ STATE = DIRECTORY / "state.json"
 
 SEGMENT_SECONDS = 2
 
+# Loudness: the mic's level is turned up by GAIN_DB, and a limiter keeps the loudest notes just
+# under full scale (LIMIT, about -1 dB) instead of clipping. Measured on piano-2: the recording
+# averaged -19 dB with peaks at -6 dB; +8 dB averages -12 dB, +14 dB about -9 dB. More than
+# that hardly gets louder (+18 dB: -8.4 dB), the limiter only squashes the music harder
+GAIN_DB = 14
+LIMIT = 0.89
+
 # Prevent concurrent state-file operations
 STATE_LOCK = threading.Lock()
 
@@ -74,8 +81,11 @@ def segment_files():
 # Continuous recording
 # ---------------------------
 
-def record_forever(stop, active):
-    """Record until stop is set; active is set while FFmpeg writes a segment."""
+def record_forever(stop, active, gain_db=GAIN_DB):
+    """Record until stop is set; active is set while FFmpeg writes a segment.
+
+    gain_db turns the recording up (or down, if negative) before the limiter.
+    """
     while not stop.is_set():
 
         seq = next_sequence()
@@ -95,6 +105,10 @@ def record_forever(stop, active):
             # Microphone
             "-f", "alsa",
             "-i", MIC,
+
+            # Louder, without clipping (level=0: the limiter only holds peaks down,
+            # it doesn't turn everything up again on its own)
+            "-af", f"volume={gain_db}dB,alimiter=limit={LIMIT}:level=0",
 
             # MP3 audio encoding
             "-ac", "1",

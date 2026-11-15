@@ -206,6 +206,12 @@ def main():
     parser.add_argument("--id", required=True)
     parser.add_argument("--server", required=True)
     parser.add_argument("--token", required=True)
+    parser.add_argument(
+        "--gain-db",
+        type=float,
+        default=record.GAIN_DB,
+        help=f"turn the recording up by this many dB, peaks held under -1 dB (default {record.GAIN_DB})"
+    )
 
     args = parser.parse_args()
     args.server = args.server.rstrip("/")
@@ -243,7 +249,7 @@ def main():
     )
 
     try:
-        record.record_forever(stop, active)
+        record.record_forever(stop, active, args.gain_db)
 
     except KeyboardInterrupt:
         stop.set()
