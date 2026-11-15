@@ -20,6 +20,7 @@ export type Piano = {
     lastSeen: string | null // last heartbeat or upload from its node
     lastPlayed: string | null
     segments: Segment[] // oldest first
+    led: string // the colour of the light at the piano, #rrggbb, set from here
     listeners: number // clients tuned in to it, the museum included
     museum: boolean // the museum is one of them
 }

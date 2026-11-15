@@ -31,6 +31,7 @@ type Piano struct {
 	LastSeen   *time.Time `json:"lastSeen"`
 	LastPlayed *time.Time `json:"lastPlayed"`
 	Segments   []Segment  `json:"segments"`  // oldest first
+	LED        string     `json:"led"`       // the colour of the light at the piano, #rrggbb
 	Listeners  int        `json:"listeners"` // clients tuned in to it, the museum included
 	Museum     bool       `json:"museum"`    // the museum is one of them
 }
@@ -71,8 +72,17 @@ func (c *Client) Download(ctx context.Context, seg Segment) ([]byte, error) {
 // Listening tells the server the museum is tuned in to the piano, "" once it stopped. The server
 // forgets it after 15 s, so it has to be repeated while listening.
 func (c *Client) Listening(ctx context.Context, piano string) error {
-	form := url.Values{"client": {"museum"}, "piano": {piano}, "museum": {"1"}}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.server+"/api/listening", strings.NewReader(form.Encode()))
+	return c.post(ctx, "/api/listening", url.Values{"client": {"museum"}, "piano": {piano}, "museum": {"1"}})
+}
+
+// SetLED sets the colour of the light at the piano, #rrggbb. Its node picks it up with its next heartbeat.
+func (c *Client) SetLED(ctx context.Context, piano, colour string) error {
+	return c.post(ctx, "/api/pianos/"+url.PathEscape(piano)+"/led", url.Values{"color": {colour}})
+}
+
+// post sends a form, for endpoints that answer 204 No Content.
+func (c *Client) post(ctx context.Context, path string, form url.Values) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.server+path, strings.NewReader(form.Encode()))
 	if err != nil {
 		return err
 	}
@@ -81,9 +91,10 @@ func (c *Client) Listening(ctx context.Context, piano string) error {
 	if err != nil {
 		return err
 	}
-	res.Body.Close()
+	defer res.Body.Close()
 	if res.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("POST /api/listening: %s", res.Status)
+		msg, _ := io.ReadAll(io.LimitReader(res.Body, 200))
+		return fmt.Errorf("POST %s: %s %s", path, res.Status, strings.TrimSpace(string(msg)))
 	}
 	return nil
 }

@@ -15,6 +15,13 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 import * as museum$0 from "./internal/museum/models.js";
 
 /**
+ * SetLED sets the colour of the light at a piano, "#rrggbb". Its node shows it within a heartbeat.
+ */
+export function SetLED(piano: string, colour: string): $CancellablePromise<void> {
+    return $Call.ByID(4274251204, piano, colour);
+}
+
+/**
  * State returns the current view, for a window that just opened.
  */
 export function State(): $CancellablePromise<museum$0.View> {

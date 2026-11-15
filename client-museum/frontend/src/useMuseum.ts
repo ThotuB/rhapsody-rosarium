@@ -22,3 +22,5 @@ export function useLevel(): number {
 
 export const tune = (id: string) => MuseumService.Tune(id)
 export const stop = () => MuseumService.Stop()
+// the colour of the light at a piano, "#rrggbb"; its node shows it within a heartbeat (~2 s)
+export const setLED = (id: string, colour: string) => MuseumService.SetLED(id, colour)

@@ -1,5 +1,6 @@
 import type { PianoState } from './api'
 import { PianoMap } from './components/PianoMap'
+import { LedPicker } from './LedPicker'
 import { describe, formatAgo, look } from './time'
 import { stop, tune, useMuseum } from './useMuseum'
 
@@ -62,6 +63,7 @@ export function Interface() {
                             <button type="button" className={pill} onClick={stop}>
                                 Stop
                             </button>
+                            <LedPicker piano={tuned} />
                         </>
                     ) : (
                         <p className="text-muted">Pick a piano to play it on the speakers.</p>

@@ -20,3 +20,8 @@ func (s *MuseumService) Tune(piano string) {
 func (s *MuseumService) Stop() {
 	s.core.Stop()
 }
+
+// SetLED sets the colour of the light at a piano, "#rrggbb". Its node shows it within a heartbeat.
+func (s *MuseumService) SetLED(piano, colour string) error {
+	return s.core.SetLED(piano, colour)
+}

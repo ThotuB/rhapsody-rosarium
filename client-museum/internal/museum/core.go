@@ -58,11 +58,27 @@ func (c *Core) OnChange(f func()) {
 
 func (c *Core) Tune(piano string) {
 	c.player.Tune(piano)
+	c.pollNow()
+	c.changed()
+}
+
+// SetLED sets the colour of the light at a piano's node, #rrggbb, through the server.
+func (c *Core) SetLED(piano, colour string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := c.link.SetLED(ctx, piano, colour); err != nil {
+		return err
+	}
+	c.pollNow() // so the windows show the new colour right away
+	return nil
+}
+
+// pollNow makes Run poll the server right away instead of at its next tick.
+func (c *Core) pollNow() {
 	select {
 	case c.kick <- struct{}{}:
 	default:
 	}
-	c.changed()
 }
 
 func (c *Core) Stop() {

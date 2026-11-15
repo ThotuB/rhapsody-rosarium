@@ -20,6 +20,11 @@ export interface Piano {
     "segments": Segment[] | null;
 
     /**
+     * the colour of the light at the piano, #rrggbb
+     */
+    "led": string;
+
+    /**
      * clients tuned in to it, the museum included
      */
     "listeners": number;
