@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 	"time"
 
 	"rhapsody-rosarium/museum/internal/lights"
+	"rhapsody-rosarium/museum/internal/link"
 	"rhapsody-rosarium/museum/internal/museum"
 )
 
@@ -25,12 +27,18 @@ func startLights(ctx context.Context, port string, strips []string, core *museum
 	go func() {
 		tick := time.NewTicker(250 * time.Millisecond)
 		defer tick.Stop()
+		checked := false
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-tick.C:
-				showOnLights(l, core.View(), strips)
+				v := core.View()
+				if !checked && len(v.Pianos) > 0 { // once the server's pianos are known
+					warnUnknownPianos(strips, v.Pianos)
+					checked = true
+				}
+				showOnLights(l, v, strips)
 			}
 		}
 	}()
@@ -64,13 +72,29 @@ func showOnLights(l *lights.Lights, v museum.View, strips []string) {
 	}
 }
 
-// pianoList splits "piano-2,piano-3" into ids, nil for "".
+// warnUnknownPianos logs the strips set to follow a piano the server doesn't have, e.g. a typo in
+// museum-bulbs.json: those stay dark, which would otherwise look like a wiring fault.
+func warnUnknownPianos(strips []string, pianos []link.Piano) {
+	known := map[string]bool{}
+	for _, p := range pianos {
+		known[p.ID] = true
+	}
+	for i, id := range strips {
+		if id != "" && !known[id] {
+			slog.Warn("lights: no such piano on the server, the strip stays off", "bulb", i+1, "piano", id)
+		}
+	}
+}
+
+// pianoList splits "piano-2,piano-3" into ids, nil for "". An empty slot ("piano-2,,piano-4") stays
+// in place as "", so the strips after it keep their pianos and that strip stays off.
 func pianoList(s string) []string {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
 	var ids []string
 	for id := range strings.SplitSeq(s, ",") {
-		if id = strings.TrimSpace(id); id != "" {
-			ids = append(ids, id)
-		}
+		ids = append(ids, strings.TrimSpace(id))
 	}
 	return ids
 }

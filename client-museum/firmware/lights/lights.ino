@@ -8,8 +8,9 @@
 //   ?                               answers READY <strips>
 // Strips count from 0. Malformed lines are ignored. Prints READY <strips> once it has started.
 //
-// Runs on a GroundStudio Carbon V3 (ESP32, the one used), an Arduino Uno / Nano or a GroundStudio
-// Magma Splash (STM32F411); the pins are picked by the board it's compiled for, below.
+// Runs on a GroundStudio Magma Splash (STM32F411, the one used; how to flash it is in the README), a
+// GroundStudio Carbon V3 (ESP32) or an Arduino Uno / Nano; the pins are picked by the board it's
+// compiled for, below.
 //
 // Wiring an L298N for 4 independent strips: PWM on IN1-IN4, the ENA / ENB jumpers left on,
 // strip + to OUT1-OUT4, strip - to the supply's GND, 12 V into its 12 V terminal with the

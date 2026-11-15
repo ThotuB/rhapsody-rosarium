@@ -1,5 +1,5 @@
 // Package lights drives the museum's led strips through the board running firmware/lights (a
-// GroundStudio Carbon V3, or an Arduino), over USB serial. It keeps what every strip should show and sends it again whenever the board
+// GroundStudio Magma Splash, a Carbon V3 or an Arduino), over USB serial. It keeps what every strip should show and sends it again whenever the board
 // (re)connects, so unplugging it or a reset never leaves the strips wrong. It never blocks its
 // callers: a missing board only means the strips stay dark.
 package lights

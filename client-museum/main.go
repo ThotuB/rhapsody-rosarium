@@ -32,15 +32,25 @@ func init() {
 }
 
 func main() {
-	server := flag.String("server", "http://localhost:8080", "the rhapsody rosarium server")
+	configPath := flag.String("config", "museum-bulbs.json", "the installation's settings: server, lights board, which piano each strip follows")
+	server := flag.String("server", "", "the rhapsody rosarium server (overrides the config; default "+defaults.Server+")")
 	tune := flag.String("tune", "", "piano to tune in to at startup")
 	sink := flag.String("sink", "device", `where audio goes: "device" (the sound card) or "null" (nowhere, for testing)`)
 	headless := flag.Bool("headless", false, "run without windows, logging what plays")
 	runFor := flag.Duration("for", 0, "with -headless, stop after this long (0 runs until Ctrl+C)")
-	lightsPort := flag.String("lights", "auto",
-		`the board driving the led strips (Carbon V3 or Arduino): a port like /dev/ttyUSB0, "auto" (the first one plugged in), "log" (only log what it'd send) or "off"`)
-	strips := flag.String("strips", "", "comma separated piano ids the led strips follow, in strip order (default: the server's first pianos)")
+	lightsPort := flag.String("lights", "",
+		`the board driving the led strips (Magma Splash, Carbon V3 or Arduino): a port like /dev/ttyACM0, "auto" (the first one plugged in), "log" (only log what it'd send) or "off" (overrides the config; default auto)`)
+	strips := flag.String("strips", "",
+		`comma separated piano ids the led strips follow, in strip order; an empty slot ("piano-2,,piano-4") leaves that strip off (overrides the config; default: the server's first pianos)`)
 	flag.Parse()
+
+	asked := false
+	flag.Visit(func(f *flag.Flag) { asked = asked || f.Name == "config" })
+	cfg, err := loadConfig(*configPath, asked)
+	if err != nil {
+		log.Fatal(err)
+	}
+	cfg.overrideWithFlags(*server, *lightsPort, *strips)
 
 	p := player.New()
 	out, err := openOutput(*sink, p.Read)
@@ -49,13 +59,13 @@ func main() {
 	}
 	defer out.Close()
 
-	core := museum.New(*server, p)
+	core := museum.New(cfg.Server, p)
 	if *tune != "" {
 		core.Tune(*tune)
 	}
 
 	ctx, stopLights := context.WithCancel(context.Background())
-	lightsOff := startLights(ctx, *lightsPort, pianoList(*strips), core)
+	lightsOff := startLights(ctx, cfg.Lights, cfg.Strips, core)
 	defer func() {
 		stopLights()
 		select { // a moment to switch the strips off
