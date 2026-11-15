@@ -1,0 +1,5 @@
+# Use Python 3.10: Basic Pitch uses ONNX on Windows without requiring TensorFlow.
+basic-pitch==0.4.0
+onnxruntime>=1.17,<2
+numpy>=1.23,<2
+soundfile>=0.12,<1

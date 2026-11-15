@@ -48,9 +48,10 @@ type Props = {
     tunedId: string | null
     playing: boolean // the tuned piano is actually sounding, not waiting or blocked
     onTune: (id: string) => void
+    projection?: boolean
 }
 
-export function PianoMap({ pianos, now, tunedId, playing, onTune }: Props) {
+export function PianoMap({ pianos, now, tunedId, playing, onTune, projection = false }: Props) {
     const container = useRef<HTMLDivElement>(null)
     const map = useRef<MapLibreMap | null>(null)
     const markers = useRef(new Map<string, Marker>())
@@ -64,23 +65,48 @@ export function PianoMap({ pianos, now, tunedId, playing, onTune }: Props) {
     useEffect(() => {
         const m = new MapLibreMap({
             container: container.current!,
-            style: STYLE,
-            center: CITY_CENTER,
-            zoom: 11,
+            style: projection ? 'https://tiles.openfreemap.org/styles/positron' : STYLE,
+            center: projection ? [21.227, 45.756] : CITY_CENTER,
+            zoom: projection ? 14.6 : 11,
             maxBounds: CITY_BOUNDS,
             renderWorldCopies: false,
             attributionControl: { compact: true },
         })
+        if (projection) {
+            m.on('load', () => {
+                // Positron's pale roads disappear on a bright projector. Style
+                // the vector layers themselves so streets have actual black ink.
+                for (const layer of m.getStyle().layers) {
+                    const sourceLayer = 'source-layer' in layer ? layer['source-layer'] : ''
+                    if (layer.type === 'background') {
+                        m.setPaintProperty(layer.id, 'background-color', '#ffffff')
+                    } else if (layer.type === 'line' &&
+                        (sourceLayer === 'transportation' || /road|street|bridge|tunnel|path/i.test(layer.id))) {
+                        m.setPaintProperty(layer.id, 'line-color', '#000000')
+                        m.setPaintProperty(layer.id, 'line-opacity', 1)
+                        m.setPaintProperty(layer.id, 'line-gap-width', 0)
+                        m.setPaintProperty(layer.id, 'line-width', ['interpolate', ['linear'], ['zoom'], 12, 0.8, 15, 1.8, 18, 4])
+                    } else if (layer.type === 'symbol' && layer.layout?.['text-field']) {
+                        m.setPaintProperty(layer.id, 'text-color', '#000000')
+                        m.setPaintProperty(layer.id, 'text-halo-color', '#ffffff')
+                        m.setPaintProperty(layer.id, 'text-halo-width', 1.5)
+                    }
+                }
+            })
+        }
         m.addControl(new NavigationControl({ showCompass: false }), 'top-right')
         map.current = m
+        const resize = new ResizeObserver(() => m.resize())
+        resize.observe(container.current!)
         const ms = markers.current
         return () => {
+            resize.disconnect()
             m.remove()
             map.current = null
             ms.clear()
             fitted.current = false
         }
-    }, [])
+    }, [projection])
 
     // markers are created once per piano and updated in place on every poll (`now` changes each time)
     useEffect(() => {
@@ -120,13 +146,13 @@ export function PianoMap({ pianos, now, tunedId, playing, onTune }: Props) {
                 markers.current.delete(id)
             }
         }
-        if (!fitted.current && pianos.length) {
+        if (!projection && !fitted.current && pianos.length) {
             fitted.current = true
             const bounds = new LngLatBounds()
             for (const p of pianos) bounds.extend([p.lng, p.lat])
             m.fitBounds(bounds, { padding: 80, maxZoom: 16, duration: 0 })
         }
-    }, [pianos, now, tunedId, playing])
+    }, [pianos, now, tunedId, playing, projection])
 
     return <div ref={container} className="relative min-h-0" />
 }

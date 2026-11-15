@@ -25,8 +25,19 @@ const (
 )
 
 type queued struct {
-	seg link.Segment
-	end int // where its samples end in buf
+	seg           link.Segment
+	start         int
+	end           int // where its samples end in buf
+	notes         []Note
+	analysisError string
+}
+
+// Note is a detected note timed relative to its audio segment.
+type Note struct {
+	Pitch    int     `json:"pitch"`
+	Start    float64 `json:"start"`
+	Duration float64 `json:"duration"`
+	Velocity float64 `json:"velocity"`
 }
 
 // Player is safe to use from several goroutines: the sound card's callback calls Read while the
@@ -98,6 +109,11 @@ func (p *Player) Want(piano string, playable []link.Segment) []link.Segment {
 // Enqueue lines up a segment's samples after what's already queued. It's ignored if the piano was
 // retuned meanwhile, or if the segment isn't newer than what's queued.
 func (p *Player) Enqueue(piano string, seg link.Segment, samples []int16) {
+	p.EnqueueAnalyzed(piano, seg, samples, nil, "")
+}
+
+// EnqueueAnalyzed keeps note timing attached to the actual speaker samples.
+func (p *Player) EnqueueAnalyzed(piano string, seg link.Segment, samples []int16, notes []Note, analysisError string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if piano != p.piano || piano == "" || (!p.heard.IsZero() && !seg.At.After(p.heard)) {
@@ -120,7 +136,7 @@ func (p *Player) Enqueue(piano string, seg link.Segment, samples []int16) {
 		fadeIn(p.buf[start:min(len(p.buf), start+fade)])
 	}
 
-	p.queued = append(p.queued, queued{seg: seg, end: len(p.buf)})
+	p.queued = append(p.queued, queued{seg: seg, start: start, end: len(p.buf), notes: slices.Clone(notes), analysisError: analysisError})
 	p.heard = seg.At
 	p.last = &seg
 }
@@ -173,13 +189,17 @@ func (p *Player) Read(out []int16) {
 
 // Status is a snapshot of what the player is doing.
 type Status struct {
-	Piano     string        // "" when off
-	Segment   *link.Segment // the segment playing now
-	Buffered  time.Duration // audio lined up and not played yet
-	Behind    time.Duration // how long ago the piano played what's playing now, 0 before anything is queued
-	Holding   bool          // silent, waiting for a cushion of audio before playing
-	Underruns int           // times it ran dry while playing, since starting
-	Level     float64       // loudness, 0 to 1
+	Piano         string        // "" when off
+	Segment       *link.Segment // the segment playing now
+	Buffered      time.Duration // audio lined up and not played yet
+	Behind        time.Duration // how long ago the piano played what's playing now, 0 before anything is queued
+	Holding       bool          // silent, waiting for a cushion of audio before playing
+	Underruns     int           // times it ran dry while playing, since starting
+	Level         float64       // loudness, 0 to 1
+	Position      float64       // seconds into the current segment; negative in gap silence
+	Duration      float64
+	Notes         []Note
+	AnalysisError string
 }
 
 func (p *Player) Status() Status {
@@ -195,6 +215,10 @@ func (p *Player) Status() Status {
 	if len(p.queued) > 0 {
 		seg := p.queued[0].seg
 		st.Segment = &seg
+		st.Position = float64(p.pos-p.queued[0].start) / Rate
+		st.Duration = float64(p.queued[0].end-p.queued[0].start) / Rate
+		st.Notes = p.queued[0].notes
+		st.AnalysisError = p.queued[0].analysisError
 	}
 	if !p.heard.IsZero() {
 		// the newest segment queued ends with what the piano played just before uploading it, which
@@ -212,6 +236,7 @@ func (p *Player) compact() {
 	}
 	p.buf = slices.Delete(p.buf, 0, p.pos)
 	for i := range p.queued {
+		p.queued[i].start -= p.pos
 		p.queued[i].end -= p.pos
 	}
 	p.pos = 0
