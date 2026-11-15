@@ -4,6 +4,23 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as link$0 from "../link/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as player$0 from "../player/models.js";
+
+/**
+ * Playback is deliberately separate from View: only small timing data is sent
+ * at 20 Hz, without repeatedly serializing the entire map's state.
+ */
+export interface Playback {
+    "piano": string;
+    "segment": string;
+    "position": number;
+    "duration": number;
+    "playing": boolean;
+    "notes": player$0.Note[] | null;
+    "analysisError": string;
+}
 
 /**
  * View is everything the museum's windows show, sent to them as the "state" event.

@@ -14,6 +14,11 @@ import "../github.com/wailsapp/wails/v3/internal/eventcreate.js";
 export const Level = "level";
 
 /**
+ * Name of the custom event "playback".
+ */
+export const Playback = "playback";
+
+/**
  * Name of the custom event "state".
  */
 export const State = "state";

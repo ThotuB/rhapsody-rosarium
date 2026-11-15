@@ -13,6 +13,7 @@ declare module "@wailsio/runtime" {
     namespace Events {
         interface CustomEvents {
             "level": number;
+            "playback": museum$0.Playback;
             "state": museum$0.View;
         }
     }

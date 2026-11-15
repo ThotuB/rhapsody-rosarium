@@ -14,6 +14,10 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 // @ts-ignore: Unused imports
 import * as museum$0 from "./internal/museum/models.js";
 
+export function Playback(): $CancellablePromise<museum$0.Playback> {
+    return $Call.ByID(73980428);
+}
+
 /**
  * SetLED sets the colour of the light at a piano, "#rrggbb". Its node shows it within a heartbeat.
  */
