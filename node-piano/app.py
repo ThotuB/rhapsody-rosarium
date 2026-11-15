@@ -23,6 +23,9 @@ HEARTBEAT_SECONDS = 2  # Also how soon the LED reacts to listeners
 
 MAX_PENDING_SEGMENTS = 3
 MAX_SEGMENT_AGE = 8
+# Seconds to connect, and to wait for the answer, per upload: well under MAX_SEGMENT_AGE, so a
+# stuck upload (a wifi hiccup) is given up and retried before the segments behind it go stale
+UPLOAD_TIMEOUT = (3, 6)
 
 
 # ---------------------------
@@ -154,6 +157,7 @@ def uploader(stop, args, active):
                     path.name,
                     path.read_bytes(),
                     seq,
+                    timeout=UPLOAD_TIMEOUT,
                 )
 
                 if response.ok:

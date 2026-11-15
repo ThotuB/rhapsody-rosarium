@@ -34,7 +34,7 @@ def post_segment(
     name: str,
     audio: bytes,
     seq: int | None = None,
-    timeout: float = 15,
+    timeout: float | tuple[float, float] = 15,  # seconds, or (to connect, to answer)
 ) -> requests.Response:
     """POST <server>/segments: one recorded segment, in any format ffmpeg reads.
 
