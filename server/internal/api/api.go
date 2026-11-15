@@ -31,6 +31,7 @@ func (a *API) Handler() http.Handler {
 	mux.HandleFunc("POST /api/segments", a.postSegment)
 	mux.HandleFunc("POST /api/heartbeat", a.postHeartbeat)
 	mux.HandleFunc("POST /api/listening", a.postListening)
+	mux.HandleFunc("POST /api/pianos/{piano}/led", a.postLED)
 	mux.HandleFunc("GET /api/state", a.getState)
 	mux.HandleFunc("GET /api/audio/{piano}/{file}", a.getAudio)
 	return mux
@@ -99,9 +100,15 @@ func (a *API) postSegment(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// nodeReply is what a node hears back from a heartbeat: its audience, and the colour the museum set for its light.
+type nodeReply struct {
+	listen.Audience
+	LED string `json:"led"` // #rrggbb
+}
+
 // postHeartbeat lets a node say it's alive between uploads, so a piano nobody plays shows as silent, not offline.
-// Takes a form with `node`, authorised by that piano's token. Answers with who is listening to the piano,
-// {"listeners": 2, "museum": true}, so the node can react to its audience.
+// Takes a form with `node`, authorised by that piano's token. Answers with who is listening to the piano and the
+// colour of its light, {"listeners": 2, "museum": true, "led": "#ff00ff"}, so the node can react to them.
 func (a *API) postHeartbeat(w http.ResponseWriter, r *http.Request) {
 	token := bearer(r)
 	if !a.store.ValidToken(token) {
@@ -115,7 +122,23 @@ func (a *API) postHeartbeat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.store.Seen(id)
-	writeJSON(w, a.listeners.Of(id))
+	writeJSON(w, nodeReply{Audience: a.listeners.Of(id), LED: a.store.LED(id)})
+}
+
+// postLED sets the colour of the light at a piano: a form with `color`, #rrggbb. The node picks it up with its
+// next heartbeat. Meant for the museum; no token, like the rest of the demo's listener side.
+func (a *API) postLED(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<10)
+	switch err := a.store.SetLED(r.PathValue("piano"), r.FormValue("color")); {
+	case errors.Is(err, store.ErrUnknownPiano):
+		http.Error(w, "unknown piano", http.StatusNotFound)
+	case errors.Is(err, store.ErrBadColour):
+		http.Error(w, "color must be #rrggbb", http.StatusBadRequest)
+	case err != nil:
+		http.Error(w, "internal error", http.StatusInternalServerError)
+	default:
+		w.WriteHeader(http.StatusNoContent)
+	}
 }
 
 // postListening is a client saying what it's tuned in to, again every few seconds while it listens.

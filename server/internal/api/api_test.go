@@ -396,3 +396,46 @@ func TestListening(t *testing.T) {
 		t.Errorf("a client that stops saying it listens should expire: %+v", got)
 	}
 }
+
+func TestLED(t *testing.T) {
+	h := (&API{store: newTestStore(t, t.TempDir(), 5)}).Handler()
+	setLED := func(piano, colour string) int {
+		return postForm(h, "/api/pianos/"+piano+"/led", url.Values{"color": {colour}}).Code
+	}
+	led := func() string {
+		var reply nodeReply
+		rec := heartbeatReply(h, "a", "token-a")
+		if err := json.Unmarshal(rec.Body.Bytes(), &reply); err != nil {
+			t.Fatalf("heartbeat reply %q: %v", rec.Body, err)
+		}
+		return reply.LED
+	}
+
+	if got := led(); got != store.DefaultLED {
+		t.Errorf("before the museum sets one, the default colour: %q", got)
+	}
+	for name, c := range map[string]struct {
+		piano, colour string
+		want          int
+	}{
+		"unknown piano":   {"zzz", "#00ff00", http.StatusNotFound},
+		"no colour":       {"a", "", http.StatusBadRequest},
+		"not hex":         {"a", "#gg0000", http.StatusBadRequest},
+		"too short":       {"a", "#fff", http.StatusBadRequest},
+		"a colour's name": {"a", "red", http.StatusBadRequest},
+	} {
+		if code := setLED(c.piano, c.colour); code != c.want {
+			t.Errorf("%s: got %d, want %d", name, code, c.want)
+		}
+	}
+
+	if code := setLED("a", "#00FF80"); code != http.StatusNoContent {
+		t.Fatalf("setting a colour: got %d", code)
+	}
+	if got := led(); got != "#00ff80" {
+		t.Errorf("the node should hear the new colour, lower case: %q", got)
+	}
+	if p := pianosByID(t, h); p["a"].LED != "#00ff80" || p["b"].LED != store.DefaultLED {
+		t.Errorf("colours in the state: a %q, b %q", p["a"].LED, p["b"].LED)
+	}
+}

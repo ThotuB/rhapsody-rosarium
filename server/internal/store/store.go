@@ -57,7 +57,19 @@ type pianoState struct {
 	cfg      piano.Config
 	segs     []segment // oldest first
 	lastSeen time.Time // last heartbeat or upload
+	led      string    // the colour of the light at the piano, #rrggbb, set by the museum
 }
+
+// DefaultLED is the colour of a piano's light until the museum sets another: purple, red + blue.
+const DefaultLED = "#ff00ff"
+
+var ledColour = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+
+// ErrUnknownPiano and ErrBadColour are what SetLED can fail with.
+var (
+	ErrUnknownPiano = errors.New("unknown piano")
+	ErrBadColour    = errors.New("colour must be #rrggbb")
+)
 
 // Store keeps the last `keep` segments of every piano as wav files under dir/<piano id>/.
 // The set of pianos is fixed at construction, so only the segment lists need the lock.
@@ -144,6 +156,32 @@ func (s *Store) Seen(id string) {
 	if p, ok := s.pianos[id]; ok {
 		p.lastSeen = s.Now()
 	}
+}
+
+// SetLED sets the colour of the light at the piano, #rrggbb. It's kept in memory only, so a
+// restarted server starts every light at DefaultLED again.
+func (s *Store) SetLED(id, colour string) error {
+	if !ledColour.MatchString(colour) {
+		return ErrBadColour
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	p, ok := s.pianos[id]
+	if !ok {
+		return ErrUnknownPiano
+	}
+	p.led = strings.ToLower(colour)
+	return nil
+}
+
+// LED returns the colour of the light at the piano, #rrggbb.
+func (s *Store) LED(id string) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if p, ok := s.pianos[id]; ok && p.led != "" {
+		return p.led
+	}
+	return DefaultLED
 }
 
 func tokenEqual(a, b string) bool {
@@ -259,6 +297,7 @@ type PianoView struct {
 	LastSeen   *time.Time    `json:"lastSeen"`
 	LastPlayed *time.Time    `json:"lastPlayed"`
 	Segments   []SegmentView `json:"segments"` // oldest first
+	LED        string        `json:"led"`      // the colour of the light at the piano, #rrggbb
 
 	// listeners and museum, filled in by the api: the store doesn't know who listens
 	listen.Audience
@@ -299,6 +338,7 @@ func (s *Store) Snapshot() []PianoView {
 			v.LastSeen = &seen
 		}
 		v.State = piano.StateOf(p.cfg.Status, p.lastSeen, lastPlayed, now)
+		v.LED = cmp.Or(p.led, DefaultLED)
 		views = append(views, v)
 	}
 	return views
