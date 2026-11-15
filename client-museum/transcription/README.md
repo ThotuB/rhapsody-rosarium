@@ -2,14 +2,18 @@
 
 ## Live projector (default)
 
-The projector opens with the video at `../../try.mp4`, relative to the museum
-working directory. With the normal launch from `client-museum`, this resolves to
-`C:\Users\Robert\Documents\Unihack\try.mp4`. The video is served directly from disk,
-not copied into the repository or embedded into each executable. Override with:
+The projector opens with the video at `media/intro.mp4`, relative to the museum
+working directory (`client-museum`, the normal launch). It's in the repository through
+Git LFS (`git lfs install` once, then `git lfs pull` if a clone has only the pointer
+file), and served directly from disk rather than embedded into each executable.
+Another video with:
 
 ```powershell
-go run . -lights off -video "C:\Users\Robert\Documents\Unihack\try.mp4"
+go run . -lights off -video "C:\path\to\another.mp4"
 ```
+
+On Linux the projector's web view needs an H.264 decoder for GStreamer
+(`sudo dnf install gstreamer1-plugin-openh264` on Fedora).
 
 The video autoplays muted; **Enable video sound** enables its audio. When it ends,
 it fades into the piano map and the 88-key keyboard appears along the bottom.

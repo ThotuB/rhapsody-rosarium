@@ -37,7 +37,7 @@ func init() {
 func main() {
 	configPath := flag.String("config", "museum-bulbs.json", "the installation's settings: server, lights board, which piano each strip follows")
 	server := flag.String("server", "", "the rhapsody rosarium server (overrides the config; default "+defaults.Server+")")
-	video := flag.String("video", filepath.Join("..", "..", "try.mp4"), "opening projector video path")
+	video := flag.String("video", filepath.Join("media", "intro.mp4"), "the projector's opening video (media/ is in git lfs)")
 	tune := flag.String("tune", "", "piano to tune in to at startup")
 	sink := flag.String("sink", "device", `where audio goes: "device" (the sound card) or "null" (nowhere, for testing)`)
 	headless := flag.Bool("headless", false, "run without windows, logging what plays")
