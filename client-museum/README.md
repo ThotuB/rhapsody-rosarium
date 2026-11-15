@@ -6,6 +6,10 @@ in the windows.
 
 ## Run
 
+For the projector's **opening video → map + live virtual piano**, see
+[transcription/README.md](transcription/README.md). It includes the AI
+helper setup, video path, and frontend rebuild steps.
+
 Needs the server running (`cd ../server && go run .`) and something playing, e.g. `cd ../node-sim && uv run simulate.py`.
 
 ```sh

@@ -9,8 +9,10 @@ import (
 	"log"
 	"log/slog"
 	"math"
+	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -28,12 +30,14 @@ var assets embed.FS
 func init() {
 	// typed events, the binding generator picks these up for the frontend
 	application.RegisterEvent[museum.View]("state")
+	application.RegisterEvent[museum.Playback]("playback")
 	application.RegisterEvent[float64]("level") // loudness of what's playing, 0 to 1, ~20 times a second
 }
 
 func main() {
 	configPath := flag.String("config", "museum-bulbs.json", "the installation's settings: server, lights board, which piano each strip follows")
 	server := flag.String("server", "", "the rhapsody rosarium server (overrides the config; default "+defaults.Server+")")
+	video := flag.String("video", filepath.Join("..", "..", "try.mp4"), "opening projector video path")
 	tune := flag.String("tune", "", "piano to tune in to at startup")
 	sink := flag.String("sink", "device", `where audio goes: "device" (the sound card) or "null" (nowhere, for testing)`)
 	headless := flag.Bool("headless", false, "run without windows, logging what plays")
@@ -77,7 +81,7 @@ func main() {
 		runHeadless(core, *runFor)
 		return
 	}
-	runWindows(core, p)
+	runWindows(core, p, *video)
 }
 
 func openOutput(sink string, src audio.Source) (audio.Output, error) {
@@ -126,7 +130,7 @@ func runHeadless(core *museum.Core, runFor time.Duration) {
 }
 
 // runWindows opens the interface and projector windows and pushes state and loudness to them.
-func runWindows(core *museum.Core, p *player.Player) {
+func runWindows(core *museum.Core, p *player.Player, video string) {
 	app := application.New(application.Options{
 		Name:        "Rhapsody Rosarium museum",
 		Description: "The museum installation of Rhapsody Rosarium",
@@ -135,6 +139,22 @@ func runWindows(core *museum.Core, p *player.Player) {
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
+			Middleware: func(next http.Handler) http.Handler {
+				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.Path == "/projector-intro.mp4" {
+						// Serve the requested video directly, including byte-range seeking;
+						// don't embed a 184 MB file into every Go build.
+						path, err := filepath.Abs(video)
+						if err != nil {
+							http.Error(w, "Video unavailable", http.StatusNotFound)
+							return
+						}
+						http.ServeFile(w, r, path)
+						return
+					}
+					next.ServeHTTP(w, r)
+				})
+			},
 		},
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
@@ -198,6 +218,7 @@ func runWindows(core *museum.Core, p *player.Player) {
 				return
 			case <-tick.C:
 				app.Event.Emit("level", p.Status().Level)
+				app.Event.Emit("playback", core.Playback())
 				if i%10 == 0 { // playing / waiting changes on the audio side, between polls
 					app.Event.Emit("state", core.View())
 				}

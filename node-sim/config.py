@@ -10,7 +10,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-CONFIG_KEYS = {"server", "token", "segment_seconds", "fast", "pianos"}
+CONFIG_KEYS = {"server", "token", "segment_seconds", "fast", "pianos", "wav", "wav_piano"}
 PIANO_KEYS = {"id", "mute", "stop_after", "token"}
 
 
@@ -22,6 +22,8 @@ class Settings:
     token: str  # default node token, {id} is replaced with the piano id
     segment_seconds: float
     fast: bool  # don't wait out segment durations, upload immediately
+    wav: Path | None = None
+    wav_piano: str = "piano-2"
 
 
 @dataclass
@@ -49,8 +51,19 @@ def load(description: str | None = None) -> tuple[Settings, list[Piano]]:
         token=args.token,
         segment_seconds=args.segment_seconds,
         fast=args.fast,
+        wav=Path(args.wav).expanduser().resolve() if args.wav else None,
+        wav_piano=args.wav_piano,
     )
-    return settings, resolve_pianos(args, scenario.get("pianos", []))
+    pianos = resolve_pianos(args, scenario.get("pianos", []))
+    if not 0 < settings.segment_seconds <= 180:
+        p.error("--segment-seconds must be between 0 and 180")
+    if settings.wav:
+        if not settings.wav.is_file() or settings.wav.suffix.lower() != ".wav":
+            p.error(f"WAV file does not exist or is not a .wav: {settings.wav}")
+        target = next((piano for piano in pianos if piano.id == settings.wav_piano), None)
+        if target is None or target.mute:
+            p.error("--wav-piano must name an active, unmuted piano in this simulator")
+    return settings, pianos
 
 
 def parser(description: str | None) -> argparse.ArgumentParser:
@@ -95,6 +108,8 @@ def parser(description: str | None) -> argparse.ArgumentParser:
         type=Path,
         help="json scenario: settings and which pianos to simulate, see configs/",
     )
+    p.add_argument("--wav", type=Path, help="WAV recording to loop instead of generated music on one piano")
+    p.add_argument("--wav-piano", default="piano-2", help="piano receiving --wav (default: piano-2)")
     return p
 
 

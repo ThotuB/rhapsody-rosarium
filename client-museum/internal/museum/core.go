@@ -39,14 +39,16 @@ type Core struct {
 	said   string
 	saidAt time.Time
 
-	mu       sync.Mutex
-	state    link.State
-	err      string
-	onChange func()
+	mu             sync.Mutex
+	state          link.State
+	err            string
+	onChange       func()
+	analyzer       *analyzer
+	analysisCancel context.CancelFunc
 }
 
 func New(server string, p *player.Player) *Core {
-	return &Core{link: link.New(server), player: p, kick: make(chan struct{}, 1)}
+	return &Core{link: link.New(server), player: p, kick: make(chan struct{}, 1), analyzer: newAnalyzer()}
 }
 
 // OnChange sets a function called whenever the view may have changed.
@@ -58,6 +60,11 @@ func (c *Core) OnChange(f func()) {
 
 func (c *Core) Tune(piano string) {
 	c.player.Tune(piano)
+	c.mu.Lock()
+	if c.analysisCancel != nil {
+		c.analysisCancel()
+	}
+	c.mu.Unlock()
 	c.pollNow()
 	c.changed()
 }
@@ -153,9 +160,51 @@ func (c *Core) feed(ctx context.Context, state link.State) {
 				slog.Warn("decoding segment", "url", seg.URL, "err", err)
 				continue
 			}
-			c.player.Enqueue(tuned, seg, samples)
+			c.mu.Lock()
+			if c.player.Tuned() != tuned {
+				c.mu.Unlock()
+				return
+			}
+			analysisCtx, cancel := context.WithCancel(ctx)
+			c.analysisCancel = cancel
+			c.mu.Unlock()
+			notes, analysisError := c.analyzer.analyze(analysisCtx, wav)
+			cancel()
+			c.mu.Lock()
+			c.analysisCancel = nil
+			c.mu.Unlock()
+			c.player.EnqueueAnalyzed(tuned, seg, samples, notes, analysisError)
+			if c.player.Tuned() != tuned {
+				return
+			}
 		}
 	}
+}
+
+// Playback is deliberately separate from View: only small timing data is sent
+// at 20 Hz, without repeatedly serializing the entire map's state.
+type Playback struct {
+	Piano         string        `json:"piano"`
+	Segment       string        `json:"segment"`
+	Position      float64       `json:"position"`
+	Duration      float64       `json:"duration"`
+	Playing       bool          `json:"playing"`
+	Notes         []player.Note `json:"notes"`
+	AnalysisError string        `json:"analysisError"`
+}
+
+func (c *Core) Playback() Playback {
+	st := c.player.Status()
+	v := Playback{Piano: st.Piano, Position: st.Position, Duration: st.Duration,
+		Playing: st.Piano != "" && !st.Holding && st.Segment != nil && st.Position >= 0,
+		Notes:   st.Notes, AnalysisError: st.AnalysisError}
+	if st.Segment != nil {
+		v.Segment = st.Segment.URL
+	}
+	if v.Notes == nil {
+		v.Notes = []player.Note{}
+	}
+	return v
 }
 
 func (c *Core) View() View {

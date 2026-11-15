@@ -25,3 +25,7 @@ func (s *MuseumService) Stop() {
 func (s *MuseumService) SetLED(piano, colour string) error {
 	return s.core.SetLED(piano, colour)
 }
+
+func (s *MuseumService) Playback() museum.Playback {
+	return s.core.Playback()
+}

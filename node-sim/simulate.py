@@ -12,6 +12,7 @@ what exactly is sent to the server is in api.py.
     uv run simulate.py --nodes 10
     uv run simulate.py --nodes 6 --fast
     uv run simulate.py --mute piano-3    # piano-3 stays online but never plays
+    uv run simulate.py --nodes 10 --wav "recording.wav" --wav-piano piano-2
 
 one process per piano, id set by arg (run in several terminals):
     uv run simulate.py --id piano-1
@@ -48,6 +49,7 @@ import api
 import config
 from config import Piano, Settings
 from music import Voice
+from wav_source import WavVoice
 
 MAX_QUEUED = 20  # segments kept for retrying while the server is unreachable
 HEARTBEAT_SECONDS = 2  # also how soon the node hears that someone tuned in
@@ -75,6 +77,7 @@ class Node:
     server: str
     mute: bool = False  # heartbeats only, never plays
     stop_at: float | None = None  # time.monotonic() when it stops, None to run forever
+    wav_voice: WavVoice | None = None
 
     @classmethod
     def from_piano(cls, piano: Piano, server: str, default_token: str) -> Self:
@@ -97,6 +100,8 @@ class Node:
     def start(self, settings: Settings) -> threading.Thread:
         """launch the node in its own thread and return right away; the thread ends when the node stops"""
         what = "muted" if self.mute else "playing"
+        if self.wav_voice is not None:
+            what = "playing WAV recording on repeat"
         if self.stop_at is not None:
             what += f", stops after {self.stop_at - time.monotonic():.0f}s"
         log(self.id, what)
@@ -129,7 +134,7 @@ class Node:
 
     def play(self, settings: Settings, windows: queue.Queue[Window]):
         """generate a window of music every segment_seconds and hand it to the uploader"""
-        voice = Voice.for_node(self.id)
+        voice = self.wav_voice or Voice.for_node(self.id)
 
         # pause returns false once the node is stopped, so a half-recorded window is never sent
         def pause(seconds):
@@ -244,10 +249,16 @@ def nap(seconds, alive):
 
 def main():
     settings, pianos = config.load(description=__doc__)
-    threads = [
-        Node.from_piano(piano, settings.server, settings.token).start(settings)
-        for piano in pianos
-    ]
+    try:
+        wav_voice = WavVoice.from_file(settings.wav) if settings.wav else None
+    except ValueError as error:
+        raise SystemExit(str(error)) from error
+    threads = []
+    for piano in pianos:
+        node = Node.from_piano(piano, settings.server, settings.token)
+        if piano.id == settings.wav_piano:
+            node.wav_voice = wav_voice
+        threads.append(node.start(settings))
     # each node's thread ends when it stops; Ctrl+C interrupts the wait, and the daemon
     # threads end with the program
     try:
