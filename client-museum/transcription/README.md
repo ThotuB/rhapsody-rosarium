@@ -17,7 +17,8 @@ On Linux the projector's web view needs an H.264 decoder for GStreamer
 
 The video autoplays muted; **Enable video sound** enables its audio. When it ends,
 it fades into the piano map and the 88-key keyboard appears along the bottom.
-**Skip intro** and **Replay intro** are available in the top-right controls.
+**Skip intro** and **Replay intro** are available in the top-right controls, and
+**Restart intro** in the museum window.
 If the file cannot be loaded, **Continue to map** still opens the live view.
 The map needs internet access for its tiles.
 

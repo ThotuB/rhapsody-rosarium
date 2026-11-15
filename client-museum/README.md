@@ -46,7 +46,9 @@ Flags override the file:
 - `-lights auto`: the board driving the led strips, the first one plugged in. Or a port (`/dev/ttyACM0`), `log` to only log what it would send, or `off`. Without a board the app runs as usual and keeps looking for one
 - `-strips piano-2,piano-5,,piano-4`: which piano each strip follows, in strip order; an empty slot leaves that strip off (default: the server's first pianos). Piano ids are the ones in `server/pianos.json`
 
-The projector window goes fullscreen on a second display when there is one, otherwise it stays a normal window.
+With a second display, both windows start fullscreen: the museum window on the laptop's own screen
+(the `eDP` one), the projector window on the other. With a single screen both stay normal windows.
+**Restart intro** in the museum window plays the projector's opening video again from the start.
 
 ## Led strips
 

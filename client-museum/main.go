@@ -165,7 +165,7 @@ func runWindows(core *museum.Core, p *player.Player, video string) {
 		},
 	})
 
-	app.Window.NewWithOptions(application.WebviewWindowOptions{
+	museumWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:            "Rhapsody Rosarium · museum",
 		Width:            1200,
 		Height:           760,
@@ -179,31 +179,9 @@ func runWindows(core *museum.Core, p *player.Player, video string) {
 		BackgroundColour: application.NewRGB(0, 0, 0),
 		URL:              "/?view=projector",
 	})
-	// fullscreen on a second display when there is one; with a single screen it stays a normal
-	// window, so it doesn't cover the only screen
+	// with a second display, the museum window fullscreen on the laptop and the projector on the other
 	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
-		screens := app.Screen.GetAll()
-		if len(screens) < 2 {
-			return
-		}
-		// the non-primary one, if exactly one is marked primary; on wayland often none is, then the second
-		target := screens[1]
-		primaries := 0
-		for _, s := range screens {
-			if s.IsPrimary {
-				primaries++
-			}
-		}
-		if primaries == 1 {
-			for _, s := range screens {
-				if !s.IsPrimary {
-					target = s
-					break
-				}
-			}
-		}
-		projector.SetScreen(target)
-		projector.Fullscreen()
+		fullscreenOnScreens(app, museumWindow, projector)
 	})
 
 	core.OnChange(func() { app.Event.Emit("state", core.View()) })

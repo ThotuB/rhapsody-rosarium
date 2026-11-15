@@ -2,7 +2,7 @@ import type { PianoState } from './api'
 import { PianoMap } from './components/PianoMap'
 import { LedPicker } from './LedPicker'
 import { describe, formatAgo, look } from './time'
-import { stop, tune, useMuseum } from './useMuseum'
+import { restartIntro, stop, tune, useMuseum } from './useMuseum'
 
 // shown while tuned in with nothing to play
 const WAITING: Partial<Record<PianoState, string>> = {
@@ -39,6 +39,9 @@ export function Interface() {
                         </span>
                     </h1>
                     <p className="text-muted">Tune in to the city.</p>
+                    <button type="button" className={pill} onClick={restartIntro}>
+                        Restart intro
+                    </button>
                 </header>
 
                 {view.serverError && (

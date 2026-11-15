@@ -1,3 +1,4 @@
+import { Events } from '@wailsio/runtime'
 import { useEffect, useRef, useState } from 'react'
 import { noteName, notesAt } from '../piano'
 import { introVideo, tune, useMuseum } from '../useMuseum'
@@ -47,6 +48,8 @@ export function StreamProjector() {
         setBlocked(false)
         try { await element.play() } catch { setBlocked(true) }
     }
+    // the museum window's "Restart intro"
+    useEffect(() => Events.On('restart-intro', () => void playIntro(true)), [])
 
     return <main className="stream-projector" data-phase={phase}>
         <section className="projector-map-area" aria-label="Map of the pianos" inert={phase === 'intro'}>

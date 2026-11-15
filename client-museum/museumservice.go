@@ -3,6 +3,8 @@ package main
 import (
 	"os"
 
+	"github.com/wailsapp/wails/v3/pkg/application"
+
 	"rhapsody-rosarium/museum/internal/museum"
 )
 
@@ -48,6 +50,11 @@ func (s *MuseumService) Stop() {
 // SetLED sets the colour of the light at a piano, "#rrggbb". Its node shows it within a heartbeat.
 func (s *MuseumService) SetLED(piano, colour string) error {
 	return s.core.SetLED(piano, colour)
+}
+
+// RestartIntro plays the projector's opening video again from the start, from the museum window.
+func (s *MuseumService) RestartIntro() {
+	application.Get().Event.Emit("restart-intro")
 }
 
 func (s *MuseumService) Playback() museum.Playback {

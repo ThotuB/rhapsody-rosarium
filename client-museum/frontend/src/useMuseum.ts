@@ -26,3 +26,5 @@ export const stop = () => MuseumService.Stop()
 export const setLED = (id: string, colour: string) => MuseumService.SetLED(id, colour)
 // where the projector's opening video is read from (-video), and whether a file is there
 export const introVideo = () => MuseumService.IntroVideo()
+// plays the projector's opening video again from the start (a "restart-intro" event to the projector)
+export const restartIntro = () => MuseumService.RestartIntro()

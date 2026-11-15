@@ -31,6 +31,13 @@ export function Playback(): $CancellablePromise<museum$0.Playback> {
 }
 
 /**
+ * RestartIntro plays the projector's opening video again from the start, from the museum window.
+ */
+export function RestartIntro(): $CancellablePromise<void> {
+    return $Call.ByID(430670622);
+}
+
+/**
  * SetLED sets the colour of the light at a piano, "#rrggbb". Its node shows it within a heartbeat.
  */
 export function SetLED(piano: string, colour: string): $CancellablePromise<void> {
