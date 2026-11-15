@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log/slog"
+	"math"
 	"strings"
 	"time"
 
@@ -11,9 +12,34 @@ import (
 	"rhapsody-rosarium/museum/internal/museum"
 )
 
-// startLights drives the led strips from the museum's state until ctx is done, and returns a
-// channel closed once they're switched off. port is as for lights.New, or "off".
-func startLights(ctx context.Context, port string, strips []string, core *museum.Core) <-chan struct{} {
+// What the bulbs show, each following one piano (see museum-bulbs.json):
+//   - the piano the museum is tuned in to: on, following the loudness of what plays
+//   - other pianos someone is playing right now: a slow pulse at a quarter brightness
+//   - the rest: off
+//
+// Tuning in to another piano moves the "on" to its bulb, and the old one goes back to pulsing or off.
+const (
+	bulbTick = 40 * time.Millisecond // how often the bulbs are updated: often enough to follow notes
+
+	tunedFloor = 0.2 // the tuned bulb is never darker than this, so it stays visibly on between notes
+	// loudness rises quickly and falls back more slowly, so the bulb follows notes without flickering
+	attack, release = 0.6, 0.15
+	// loudness is measured against the loudest recent sound, which fades by half in about this long:
+	// a quiet microphone then lights the bulb as fully as a loud one
+	peakHalfLife = 8 * time.Second
+	minPeak      = 0.02 // quieter than this is near silence (a mic's own noise), which isn't scaled up into flicker
+	// music rarely drops far below its recent peak, so the differences are exaggerated: at 2, a passage
+	// at 70% of the peak's loudness lights the bulb at about half, instead of looking nearly steady
+	contrast = 2
+
+	playingLevel  = 0.25 // other playing pianos: a quarter brightness
+	playingPulses = 0.25 // pulses per second: one every 4 s
+)
+
+// startLights drives the led strips from the museum's state and the loudness of what plays until
+// ctx is done, and returns a channel closed once they're switched off. port is as for lights.New,
+// or "off".
+func startLights(ctx context.Context, port string, strips []string, core *museum.Core, level func() float64) <-chan struct{} {
 	done := make(chan struct{})
 	if port == "off" {
 		close(done)
@@ -25,8 +51,9 @@ func startLights(ctx context.Context, port string, strips []string, core *museum
 		close(done)
 	}()
 	go func() {
-		tick := time.NewTicker(250 * time.Millisecond)
+		tick := time.NewTicker(bulbTick)
 		defer tick.Stop()
+		b := &bulbs{strips: strips}
 		checked := false
 		for {
 			select {
@@ -38,38 +65,66 @@ func startLights(ctx context.Context, port string, strips []string, core *museum
 					warnUnknownPianos(strips, v.Pianos)
 					checked = true
 				}
-				showOnLights(l, v, strips)
+				b.show(l, v, level())
 			}
 		}
 	}()
 	return done
 }
 
-// showOnLights decides what the strips show. A placeholder until that's decided: strip i follows
-// the i-th piano of strips (by default the server's first pianos) like that piano's own led at
-// the instrument, off while nobody listens and pulsing faster with every listener.
-func showOnLights(l *lights.Lights, v museum.View, strips []string) {
-	if len(strips) == 0 {
+// setter is what the bulbs are shown on: *lights.Lights, or a fake in tests.
+type setter interface {
+	Set(i int, s lights.Strip)
+}
+
+// bulbs decides what the strips show, see the rules above. show is called every bulbTick.
+type bulbs struct {
+	strips []string // the piano each strip follows; empty: the server's first pianos
+	loud   float64  // smoothed loudness of what plays, 0 to 1
+	peak   float64  // the loudest recent sound, slowly fading
+}
+
+var peakDecay = math.Pow(0.5, float64(bulbTick)/float64(peakHalfLife)) // per tick
+
+func (b *bulbs) show(out setter, v museum.View, level float64) {
+	k := release
+	if level > b.loud {
+		k = attack
+	}
+	b.loud += (level - b.loud) * k
+	b.peak = max(b.loud, b.peak*peakDecay, minPeak)
+
+	ids := b.strips
+	if len(ids) == 0 {
 		for _, p := range v.Pianos {
-			strips = append(strips, p.ID)
+			ids = append(ids, p.ID)
 		}
 	}
-	listeners := map[string]int{}
+	playing := map[string]bool{}
 	for _, p := range v.Pianos {
-		listeners[p.ID] = p.Listeners
+		playing[p.ID] = p.State == "playing"
 	}
 	for i := range lights.Strips {
-		n := 0
-		if i < len(strips) {
-			n = listeners[strips[i]]
+		id := ""
+		if i < len(ids) {
+			id = ids[i]
 		}
-		s := lights.Strip{Fade: time.Second} // fades on and off
-		if n > 0 {
-			// the same speeds as node-piano/lights.py: +0.25 pulses per second per listener, at most 2.5
-			s.Level, s.Pulses = 255, min(0.25*float64(n), 2.5)
+		switch {
+		case id != "" && id == v.Tuned:
+			bright := tunedFloor + (1-tunedFloor)*math.Pow(min(1, b.loud/b.peak), contrast)
+			out.Set(i, lights.Strip{Level: level255(bright), Fade: bulbTick})
+		case id != "" && playing[id]:
+			out.Set(i, lights.Strip{Level: level255(playingLevel), Fade: time.Second, Pulses: playingPulses})
+		default:
+			out.Set(i, lights.Strip{Fade: time.Second}) // fades out
 		}
-		l.Set(i, s)
 	}
+}
+
+// level255 turns a brightness from 0 to 1 into the firmware's 0-255. The firmware corrects for how
+// eyes see brightness, so 0.25 looks like a quarter.
+func level255(brightness float64) uint8 {
+	return uint8(math.Round(min(max(brightness, 0), 1) * 255))
 }
 
 // warnUnknownPianos logs the strips set to follow a piano the server doesn't have, e.g. a typo in

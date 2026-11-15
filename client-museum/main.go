@@ -65,7 +65,7 @@ func main() {
 	}
 
 	ctx, stopLights := context.WithCancel(context.Background())
-	lightsOff := startLights(ctx, cfg.Lights, cfg.Strips, core)
+	lightsOff := startLights(ctx, cfg.Lights, cfg.Strips, core, func() float64 { return p.Status().Level })
 	defer func() {
 		stopLights()
 		select { // a moment to switch the strips off

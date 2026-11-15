@@ -59,18 +59,21 @@ To flash the Magma Splash:
 2. Tools: board "Generic STM32F4 series", board part number "BlackPill F411CE (HSE 25Mhz)", USB support
    "CDC (generic 'Serial' supersede U(S)ART)"
 3. Sketch → Export Compiled Binary (into `firmware/lights/build/`, ignored by git)
-4. Upload mode: hold BOOT0, tap NRST, release BOOT0. `sudo ./dfu-util -l` (in `firmware/lights/`) lists it as
+4. Unplug the strips' 12 V supply: with it on, dfu mode doesn't connect over USB (the kernel logs
+   "device not accepting address, error -71"). Then upload mode: hold BOOT0, tap NRST, release BOOT0. `sudo ./dfu-util -l` (in `firmware/lights/`) lists it as
    `[0483:df11] … "@Internal Flash …"`
-5. Flash, naming the device: other things can show up in dfu mode too (a Framework laptop's camera does), and
-   flashing the wrong one can brick it. Its serial number is in the `-l` list:
+5. Flash: `./flash-lights.sh` (asks for sudo). It finds the Magma in dfu mode by itself, refuses a binary older
+   than the sketch, and waits for the board to come back as `/dev/ttyACM0`. By hand, naming the device: other
+   things can show up in dfu mode too (a Framework laptop's camera does), and flashing the wrong one can brick it.
+   Its serial number is in the `-l` list:
 
    ```sh
    cd firmware/lights
    sudo ./dfu-util -d 0483:df11 -S <serial> -a 0 -s 0x08000000:leave -D build/STMicroelectronics.stm32.GenF4/lights.ino.bin
    ```
 
-   It restarts into the sketch and shows up as `/dev/ttyACM0`. "Device's firmware is corrupt" at the start is
-   normal for dfu mode. `dfu-util` here is a static Linux x86-64 build, a copy of the one the Arduino IDE installs.
+   "Device's firmware is corrupt" at the start is normal for dfu mode. `dfu-util` here is a static Linux x86-64
+   build, a copy of the one the Arduino IDE installs.
 
 To upload to a Carbon V3 instead: install "esp32" by Espressif in the Boards Manager, pick "ESP32 Dev Module" and
 its port (`/dev/ttyUSB0`), and upload from the IDE.
@@ -82,8 +85,15 @@ in the IDE's serial monitor (115200 baud, line ending "Newline") to try the wiri
 - `P 0 0.5`: strip 0 pulses every 2 s, `P 0 0` stops
 - `?`: answers `READY 6`
 
-What the strips show is a placeholder for now (`lights.go`): each follows one piano like that piano's own led,
-off while nobody listens and pulsing faster with every listener.
+What the bulbs show (`lights.go`), each following its piano from `museum-bulbs.json`:
+
+- the piano the museum is tuned in to: on, following the loudness of what plays (measured against the loudest
+  recent sound, so a quiet microphone lights it as fully as a loud one; never below 20%, so it stays visibly on
+  between notes)
+- other pianos someone is playing right now: a slow pulse, every 4 s, at a quarter brightness
+- the rest: off
+
+Tuning in to another piano moves the "on" to its bulb. The constants at the top of `lights.go` tune the feel.
 
 ## Layout
 

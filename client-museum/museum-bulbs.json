@@ -1,5 +1,5 @@
 {
     "server": "http://localhost:8080",
     "lights": "auto",
-    "strips": ["piano-2", "piano-5", null, "piano-4"]
+    "strips": ["piano-2", "piano-5", "piano-3", "piano-4"]
 }
