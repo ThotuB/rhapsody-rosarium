@@ -14,8 +14,9 @@ def post_heartbeat(
 ) -> requests.Response:
     """POST <server>/heartbeat: the node is online, even while nobody plays.
 
-    200 when accepted, with who is listening to the piano right now:
-    {"listeners": 2, "museum": true}, listeners counts the museum too.
+    200 when accepted, with who is listening to the piano right now and the colour
+    the museum set for its light: {"listeners": 2, "museum": true, "led": "#ff00ff"},
+    listeners counts the museum too.
     """
     return session.post(
         f"{server}/heartbeat",

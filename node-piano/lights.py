@@ -1,8 +1,8 @@
-"""Purple LED that pulses faster the more people listen to this piano.
+"""RGB LED that pulses faster the more people listen to this piano, in the colour the museum sets.
 
-app.py's heartbeat passes on the listener count from the server's reply:
-0 listeners is off, 1 pulses slowly, and every extra listener pulses faster.
-The light runs in its own thread.
+app.py's heartbeat passes on the server's reply: the listener count (0 listeners
+is off, 1 pulses slowly, and every extra listener pulses faster) and the colour,
+"#rrggbb". The light runs in its own thread.
 """
 
 import math
@@ -18,27 +18,46 @@ MAX_PULSES = 2.5  # Pulses per second at most, from 10 listeners on
 FADE_SPEED = 0.6  # How fast the light fades in / out when listeners come and go, per second
 UPDATE_INTERVAL = 0.02
 
+# Colour configuration
+DEFAULT_COLOUR = "#ff00ff"  # Purple, until the museum sets another (the server's default too)
+COLOUR_FADE = 2.0  # How fast a new colour fades in, per second: half a second from one to another
+
 
 def pulses_for(listeners):
     """Pulses per second for a listener count, 0 for nobody."""
     return min(max(0, listeners) * PULSES_PER_LISTENER, MAX_PULSES)
 
 
+def parse_colour(text):
+    """(red, green, blue) from 0.0 to 1.0 for "#rrggbb", None if it isn't one."""
+    if not isinstance(text, str) or len(text) != 7 or text[0] != "#":
+        return None
+    try:
+        value = int(text[1:], 16)
+    except ValueError:
+        return None
+    return tuple(((value >> shift) & 0xFF) / 255 for shift in (16, 8, 0))
+
+
 class Light:
-    """Purple (red + blue) on the L298N, brightness by PWM on ENA / ENB."""
+    """RGB strip on the L298N: a PWM per colour on its inputs, with ENA / ENB held on."""
 
     def __init__(self):
-        self.ena = PWMOutputDevice(5, frequency=500, initial_value=0)
-        self.enb = PWMOutputDevice(6, frequency=500, initial_value=0)
+        # Both halves of the L298N on; colour and brightness are all in the colour PWMs
+        self.ena = DigitalOutputDevice(5, initial_value=True)
+        self.enb = DigitalOutputDevice(6, initial_value=True)
 
-        # RGB channels (active LOW): red + blue = purple. Pins as wired, checked with
-        # test/channels.py: GPIO 17 -> IN1 green, 27 -> IN2 blue, 22 -> IN3 red
-        self.red = DigitalOutputDevice(22, initial_value=False)  # ON
-        self.green = DigitalOutputDevice(17, initial_value=True)  # OFF
-        self.blue = DigitalOutputDevice(27, initial_value=False)  # ON
+        # RGB channels, active LOW: a value of 1 holds the pin low, that colour fully on.
+        # Pins as wired, checked with test/channels.py: GPIO 22 -> IN3 red,
+        # 17 -> IN1 green, 27 -> IN2 blue
+        self.channels = [
+            PWMOutputDevice(pin, active_high=False, frequency=500, initial_value=0)
+            for pin in (22, 17, 27)  # Red, green, blue
+        ]
 
         self.lock = threading.Lock()
         self.pulses = 0.0  # Pulses per second, 0 is off
+        self.colour = parse_colour(DEFAULT_COLOUR)  # The colour to show, (r, g, b)
         self.thread = None
 
     def start(self, stop):
@@ -50,16 +69,24 @@ class Light:
         )
         self.thread.start()
 
-    def show(self, listeners):
-        """Pulse at the speed for this many listeners."""
+    def show(self, listeners, colour=None):
+        """Pulse at the speed for this many listeners, in colour ("#rrggbb").
+
+        A missing or invalid colour keeps the current one.
+        """
+        rgb = parse_colour(colour)
         with self.lock:
             self.pulses = pulses_for(listeners)
+            if rgb is not None:
+                self.colour = rgb
 
     def run(self, stop):
         """Pulse until stop is set."""
         phase = 0.0  # Position in the pulse, 0 to 1: speed changes carry on from here, no jumps
         level = 0.0  # Fades to 1 while anyone listens, to 0 once nobody does
         rate = 0.0
+        with self.lock:
+            shown = list(self.colour)  # The colour shown now, fading towards self.colour
         last_time = time.monotonic()
 
         while not stop.is_set():
@@ -71,6 +98,7 @@ class Light:
                 # Nobody listening: finish fading out at the last speed
                 rate = self.pulses or rate
                 on = self.pulses > 0
+                target = self.colour
 
             phase = (phase + rate * dt) % 1.0
 
@@ -79,11 +107,17 @@ class Light:
             else:
                 level = max(0.0, level - FADE_SPEED * dt)
 
+            # A new colour fades in instead of jumping
+            step = COLOUR_FADE * dt
+            shown = [
+                c + max(-step, min(step, t - c)) for c, t in zip(shown, target)
+            ]
+
             # Smoothly OFF -> ON -> OFF once per pulse
             brightness = level * (1 - math.cos(2 * math.pi * phase)) / 2
 
-            self.ena.value = brightness
-            self.enb.value = brightness
+            for channel, c in zip(self.channels, shown):
+                channel.value = brightness * c
 
             stop.wait(UPDATE_INTERVAL)
 
@@ -92,10 +126,10 @@ class Light:
         if self.thread is not None:
             self.thread.join(timeout=1)
 
-        self.ena.value = 0
-        self.enb.value = 0
+        for channel in self.channels:
+            channel.value = 0
 
-        for device in (self.ena, self.enb, self.red, self.green, self.blue):
+        for device in (self.ena, self.enb, *self.channels):
             device.close()
 
 

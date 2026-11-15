@@ -222,12 +222,13 @@ class Node:
 
 
 def describe(audience):
-    """a heartbeat's answer, {"listeners": 2, "museum": true}, in words"""
+    """a heartbeat's answer, {"listeners": 2, "museum": true, "led": "#ff00ff"}, in words"""
     n = audience.get("listeners", 0)
+    led = f", led {audience['led']}" if audience.get("led") else ""
     if not n:
-        return "nobody listening"
+        return f"nobody listening{led}"
     museum = ", the museum among them" if audience.get("museum") else ""
-    return f"{n} listening{museum}"
+    return f"{n} listening{museum}{led}"
 
 
 def log(node_id, message):

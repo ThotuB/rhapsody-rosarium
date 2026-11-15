@@ -2,7 +2,7 @@
 
 record.py writes numbered segment files; this uploads them in order and sends
 a heartbeat, whose reply says how many people listen to this piano, which sets
-how fast the LED pulses (see lights.py).
+how fast the LED pulses, and the colour the museum chose for it (see lights.py).
 
     uv run app.py --id piano-2 --server http://10.69.251.6:8080/api --token dev
 """
@@ -30,12 +30,14 @@ MAX_SEGMENT_AGE = 8
 # ---------------------------
 
 def heartbeat(stop, args, light):
-    """Tell the server the node is online, and show its listeners on the LED."""
+    """Tell the server the node is online, and show its listeners on the LED,
+    in the colour the museum set."""
     session = requests.Session()
-    heard = None  # Last listener count, to print only changes
+    heard = None  # Last listeners and colour, to print only changes
 
     while not stop.is_set():
         listeners = 0  # Fade out on connection loss
+        colour = None  # Keep the last colour on connection loss
 
         try:
             response = api.post_heartbeat(
@@ -46,17 +48,18 @@ def heartbeat(stop, args, light):
             )
 
             if response.ok:
-                # {"listeners": 2, "museum": true}, listeners counts the museum too
+                # {"listeners": 2, "museum": true, "led": "#ff00ff"}, listeners counts the museum too
                 data = response.json()
                 listeners = int(data["listeners"])
                 museum = bool(data.get("museum", False))
+                colour = data.get("led")
 
-                if listeners != heard:
+                if (listeners, colour) != heard:
                     print(
-                        f"Listeners: {listeners} | Museum: {museum}",
+                        f"Listeners: {listeners} | Museum: {museum} | LED: {colour}",
                         flush=True
                     )
-                    heard = listeners
+                    heard = (listeners, colour)
 
             else:
                 print(
@@ -72,7 +75,7 @@ def heartbeat(stop, args, light):
             )
 
         if light is not None:
-            light.show(listeners)
+            light.show(listeners, colour)
 
         stop.wait(HEARTBEAT_SECONDS)
 
