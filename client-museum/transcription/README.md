@@ -36,6 +36,27 @@ stays unlit for that segment, with a status message. No recognition runs in the
 sound-card callback. Recognition of notes spanning segment boundaries is still
 approximate.
 
+## On Linux
+
+Set up once (Python 3.10 through uv; on Linux Basic Pitch runs its TFLite model, the
+"Tensorflow is not installed" warning is harmless):
+
+```sh
+cd client-museum/transcription
+uv venv --python 3.10 .venv
+uv pip install --python .venv/bin/python -r requirements.txt
+```
+
+Start it, and keep it running next to the museum app:
+
+```sh
+.venv/bin/python serve.py
+```
+
+It's ready after a few seconds (the very first start compiles parts of the libraries and
+can take much longer). The first segment takes ~3 s while the model warms up, then each
+2 s segment takes ~0.3 s.
+
 ## 1. Set up the AI helper once (PowerShell)
 
 Install **64-bit Python 3.10** from https://www.python.org/downloads/release/python-31011/
