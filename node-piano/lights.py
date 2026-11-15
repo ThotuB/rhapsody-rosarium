@@ -31,10 +31,11 @@ class Light:
         self.ena = PWMOutputDevice(5, frequency=500, initial_value=0)
         self.enb = PWMOutputDevice(6, frequency=500, initial_value=0)
 
-        # RGB channels (active LOW): red + blue = purple
-        self.red = DigitalOutputDevice(17, initial_value=False)  # ON
-        self.green = DigitalOutputDevice(27, initial_value=True)  # OFF
-        self.blue = DigitalOutputDevice(22, initial_value=False)  # ON
+        # RGB channels (active LOW): red + blue = purple. Pins as wired, checked with
+        # test/channels.py: GPIO 17 -> IN1 green, 27 -> IN2 blue, 22 -> IN3 red
+        self.red = DigitalOutputDevice(22, initial_value=False)  # ON
+        self.green = DigitalOutputDevice(17, initial_value=True)  # OFF
+        self.blue = DigitalOutputDevice(27, initial_value=False)  # ON
 
         self.lock = threading.Lock()
         self.pulses = 0.0  # Pulses per second, 0 is off

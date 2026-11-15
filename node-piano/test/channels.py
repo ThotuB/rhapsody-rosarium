@@ -11,9 +11,9 @@ from gpiozero import DigitalOutputDevice, PWMOutputDevice
 
 # L298N wiring as in lights.py: IN1-IN3 per colour (active LOW), ENA / ENB for brightness
 CHANNELS = {
-    "red   (GPIO 17 -> IN1 -> OUT1)": 17,
-    "green (GPIO 27 -> IN2 -> OUT2)": 27,
-    "blue  (GPIO 22 -> IN3 -> OUT3)": 22,
+    "green (GPIO 17 -> IN1 -> OUT1)": 17,
+    "blue  (GPIO 27 -> IN2 -> OUT2)": 27,
+    "red   (GPIO 22 -> IN3 -> OUT3)": 22,
 }
 SECONDS = 3
 

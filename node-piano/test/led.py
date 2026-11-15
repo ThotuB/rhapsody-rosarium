@@ -3,10 +3,10 @@ from gpiozero import DigitalOutputDevice, PWMOutputDevice
 from time import sleep
 import math
 
-# RGB channels (active LOW)
-red = DigitalOutputDevice(17, initial_value=True)
-green = DigitalOutputDevice(27, initial_value=True)
-blue = DigitalOutputDevice(22, initial_value=True)
+# RGB channels (active LOW), pins as wired (see test/channels.py)
+red = DigitalOutputDevice(22, initial_value=True)
+green = DigitalOutputDevice(17, initial_value=True)
+blue = DigitalOutputDevice(27, initial_value=True)
 
 # PWM brightness control
 ena = PWMOutputDevice(5, frequency=500, initial_value=0)
