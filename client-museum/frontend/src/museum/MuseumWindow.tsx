@@ -1,10 +1,10 @@
-import type { PianoState } from './api'
-import { PianoMap } from './components/PianoMap'
-import { Visualizer } from './components/Visualizer'
+import type { PianoState } from '../shared/api'
+import { PianoMap } from '../shared/PianoMap'
+import { Visualizer } from './Visualizer'
 import { IntroControls } from './IntroControls'
 import { LedPicker } from './LedPicker'
-import { describe, formatAgo, look } from './time'
-import { stop, tune, useMuseum } from './useMuseum'
+import { describe, formatAgo, look } from '../shared/time'
+import { stop, tune, useMuseum } from '../shared/useMuseum'
 
 // shown while tuned in with nothing to play
 const WAITING: Partial<Record<PianoState, string>> = {
@@ -15,7 +15,7 @@ const WAITING: Partial<Record<PianoState, string>> = {
 }
 
 // The window on the installation's screen: the map, what plays on the speakers, and the stations.
-export function Interface() {
+export function MuseumWindow() {
     const view = useMuseum()
     if (!view) return <p className="p-6 text-muted">Starting…</p>
 

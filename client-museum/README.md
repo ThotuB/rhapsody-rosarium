@@ -122,4 +122,7 @@ this module can import.
 - `internal/lights`: the led strips' board over USB serial: waits for it to be ready, sends what changed, sends everything again after a reset or replug
 - `internal/bulbs`: what the strips show, from the museum's state
 - `lights-board/`: the sketch for the strips' board (Magma Splash, Carbon V3 or Uno / Nano), `flash.sh` and `dfu-util` to flash the Magma
-- `frontend/`: React + TypeScript + Tailwind. `PianoMap`, `time.ts` and the css are copied from `client-web` for now
+- `frontend/`: React + TypeScript + Tailwind. Both windows load `src/main.tsx`, which picks the window by its url
+  (`?view=projector`). `src/museum/` is the museum window, `src/projector/` the projector, `src/shared/` what both
+  use: the map, and `useMuseum.ts`, which talks to the Go side. `PianoMap`, `time.ts` and the css are copied from
+  `client-web` for now

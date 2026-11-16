@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Piano } from './api'
-import { setLED } from './useMuseum'
+import type { Piano } from '../shared/api'
+import { setLED } from '../shared/useMuseum'
 
 const PRESETS = ['#ff00ff', '#ff0000', '#ff6000', '#ffc000', '#00ff00', '#00ffff', '#0000ff', '#ffffff']
 

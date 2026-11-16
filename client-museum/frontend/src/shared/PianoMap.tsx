@@ -10,8 +10,8 @@ import {
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef } from 'react'
-import type { Piano } from '../api'
-import { describe, look } from '../time'
+import type { Piano } from './api'
+import { describe, look } from './time'
 
 // vite pre-bundles maplibre, which breaks its own lookup of the worker file next to it
 setWorkerUrl(workerUrl)

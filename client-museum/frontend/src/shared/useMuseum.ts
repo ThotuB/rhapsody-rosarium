@@ -1,6 +1,6 @@
 import { Events } from '@wailsio/runtime'
 import { useEffect, useState } from 'react'
-import { IntroAction, MuseumService, type IntroState } from '../bindings/rhapsody-rosarium/museum'
+import { IntroAction, MuseumService, type IntroState } from '../../bindings/rhapsody-rosarium/museum'
 import type { View } from './api'
 
 // The controller's view: fetched once when the window opens, then pushed as "state" events.

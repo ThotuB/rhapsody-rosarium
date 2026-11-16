@@ -1,13 +1,13 @@
 import { Events } from '@wailsio/runtime'
 import { useEffect, useRef, useState } from 'react'
-import { noteName, notesAt } from '../piano'
-import { IntroAction, introVideo, reportIntro, tune, useMuseum } from '../useMuseum'
-import { usePlayback } from '../usePlayback'
+import { noteName, notesAt } from './piano'
+import { IntroAction, introVideo, reportIntro, tune, useMuseum } from '../shared/useMuseum'
+import { usePlayback } from './usePlayback'
 import { PianoKeyboard } from './PianoKeyboard'
-import { PianoMap } from './PianoMap'
-import './stream-projector.css'
+import { PianoMap } from '../shared/PianoMap'
+import './projector.css'
 
-export function StreamProjector() {
+export function ProjectorWindow() {
     const view = useMuseum()
     const playback = usePlayback()
     const video = useRef<HTMLVideoElement>(null)
@@ -17,7 +17,7 @@ export function StreamProjector() {
     const [muted, setMuted] = useState(false)
     // the intro waits for Start in the museum window; it waits again if the web view refuses to play
     const [waiting, setWaiting] = useState(true)
-    // where the video is loaded from: the app's own path, or on Linux a local server (see video.go)
+    // where the video is loaded from: the app's own path, or on Linux a local server (see internal/windows/video.go)
     const [videoSrc, setVideoSrc] = useState<string>()
     useEffect(() => {
         introVideo().then((info) => setVideoSrc(info.url)).catch(() => setVideoSrc('/projector-intro.mp4'))

@@ -1,7 +1,7 @@
 // Node 26 can import this module's erasable TypeScript directly.
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { notesAt, pianoKeys, readTranscription, WHITE_KEYS } from '../src/piano.ts'
+import { notesAt, pianoKeys, readTranscription, WHITE_KEYS } from '../src/projector/piano.ts'
 
 test('keyboard spans A0 to C8 with 52 white keys and 36 black keys', () => {
     assert.equal(pianoKeys.length, 88)

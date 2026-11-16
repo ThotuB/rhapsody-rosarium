@@ -1,4 +1,4 @@
-import { noteName, notesAt, pianoKeys, WHITE_KEYS, type PianoNote } from '../piano'
+import { noteName, notesAt, pianoKeys, WHITE_KEYS, type PianoNote } from './piano'
 import './piano-keyboard.css'
 
 export function PianoKeyboard({ notes, position, playing }: { notes: PianoNote[]; position: number; playing: boolean }) {

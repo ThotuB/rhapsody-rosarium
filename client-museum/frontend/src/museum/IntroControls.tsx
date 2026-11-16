@@ -1,5 +1,5 @@
-import { Icon, type IconName } from './components/icons'
-import { controlIntro, IntroAction, useIntro } from './useMuseum'
+import { Icon, type IconName } from './icons'
+import { controlIntro, IntroAction, useIntro } from '../shared/useMuseum'
 
 // The projector's opening video, controlled from here: the projection itself has no controls.
 export function IntroControls() {
