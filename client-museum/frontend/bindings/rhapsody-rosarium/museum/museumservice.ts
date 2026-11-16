@@ -19,6 +19,21 @@ import * as museum$0 from "./internal/museum/models.js";
 import * as $models from "./models.js";
 
 /**
+ * ControlIntro passes one of the museum window's intro controls to the projector, as an
+ * "intro-action" event: the projector itself has no controls.
+ */
+export function ControlIntro(action: $models.IntroAction): $CancellablePromise<void> {
+    return $Call.ByID(693172216, action);
+}
+
+/**
+ * Intro is what the projector's opening video does, for a window that just opened.
+ */
+export function Intro(): $CancellablePromise<$models.IntroState> {
+    return $Call.ByID(1805040977);
+}
+
+/**
  * IntroVideo says where the opening video comes from, so the projector can load it, and say where it
  * looked when it can't play it.
  */
@@ -31,10 +46,11 @@ export function Playback(): $CancellablePromise<museum$0.Playback> {
 }
 
 /**
- * RestartIntro plays the projector's opening video again from the start, from the museum window.
+ * ReportIntro is the projector saying what its opening video does, passed on to the museum window
+ * as an "intro" event.
  */
-export function RestartIntro(): $CancellablePromise<void> {
-    return $Call.ByID(430670622);
+export function ReportIntro(state: $models.IntroState): $CancellablePromise<void> {
+    return $Call.ByID(3638419287, state);
 }
 
 /**

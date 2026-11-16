@@ -68,3 +68,7 @@
 .projector-video-message button, .projector-tools button { background: #fff; color: #000; border-color: #000; }
 .projector-tools { opacity: .75; }
 .projector-tools :focus-visible, .projector-video-message :focus-visible { outline-color: #000; }
+/* Nothing on the projection reacts to mouse or touch, and no cursor shows on it: it's controlled
+   from the museum window. */
+.stream-projector { pointer-events: none; }
+html:has(.stream-projector) { cursor: none; }

@@ -94,7 +94,8 @@ export function PianoMap({ pianos, now, tunedId, playing, onTune, projection = f
                 }
             })
         }
-        m.addControl(new NavigationControl({ showCompass: false }), 'top-right')
+        // the projection isn't touched, so it has no zoom buttons
+        if (!projection) m.addControl(new NavigationControl({ showCompass: false }), 'top-right')
         map.current = m
         const resize = new ResizeObserver(() => m.resize())
         resize.observe(container.current!)

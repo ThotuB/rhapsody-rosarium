@@ -6,6 +6,11 @@ export {
     MuseumService
 };
 
+export {
+    IntroAction
+} from "./models.js";
+
 export type {
+    IntroState,
     IntroVideo
 } from "./models.js";

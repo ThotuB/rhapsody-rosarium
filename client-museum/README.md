@@ -48,7 +48,9 @@ Flags override the file:
 
 With a second display, both windows start fullscreen: the museum window on the laptop's own screen
 (the `eDP` one), the projector window on the other. With a single screen both stay normal windows.
-**Restart intro** in the museum window plays the projector's opening video again from the start.
+The projector has no controls and ignores mouse and touch; everything is done from the museum window.
+Its opening video waits there until it's started with the play button under the title, next to mute
+and skip to the map; on the map the same button replays it.
 
 ## Led strips
 

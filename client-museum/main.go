@@ -146,7 +146,8 @@ func runWindows(core *museum.Core, p *player.Player, video string) {
 		Name:        "Rhapsody Rosarium museum",
 		Description: "The museum installation of Rhapsody Rosarium",
 		Services: []application.Service{
-			application.NewService(&MuseumService{core: core, video: video, introURL: introURL}),
+			// the projector opens on the video, waiting to be started
+			application.NewService(&MuseumService{core: core, video: video, introURL: introURL, intro: IntroState{Phase: "intro"}}),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"sync"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
@@ -13,6 +15,9 @@ type MuseumService struct {
 	core     *museum.Core
 	video    string // the projector's opening video, an absolute path (-video)
 	introURL string // where the projector loads it from, see video.go
+
+	mu    sync.Mutex
+	intro IntroState // as the projector last reported it
 }
 
 // IntroVideo is where the projector's opening video is read from, and whether a file is there.
@@ -52,9 +57,48 @@ func (s *MuseumService) SetLED(piano, colour string) error {
 	return s.core.SetLED(piano, colour)
 }
 
-// RestartIntro plays the projector's opening video again from the start, from the museum window.
-func (s *MuseumService) RestartIntro() {
-	application.Get().Event.Emit("restart-intro")
+// IntroState is what the projector's opening video is doing, for the museum window's controls.
+type IntroState struct {
+	Phase   string `json:"phase"`   // "intro" (the video, playing or waiting to start) or "map"
+	Playing bool   `json:"playing"` // false while it waits to be started
+	Muted   bool   `json:"muted"`
+}
+
+// IntroAction is what the museum window's controls ask the projector's opening video to do.
+type IntroAction string
+
+const (
+	IntroStart  IntroAction = "start" // play it from the start, also from the map
+	IntroMute   IntroAction = "mute"
+	IntroUnmute IntroAction = "unmute"
+	IntroSkip   IntroAction = "skip" // to the map
+)
+
+// ControlIntro passes one of the museum window's intro controls to the projector, as an
+// "intro-action" event: the projector itself has no controls.
+func (s *MuseumService) ControlIntro(action IntroAction) error {
+	switch action {
+	case IntroStart, IntroMute, IntroUnmute, IntroSkip:
+		application.Get().Event.Emit("intro-action", action)
+		return nil
+	}
+	return fmt.Errorf("unknown intro action %q", action)
+}
+
+// ReportIntro is the projector saying what its opening video does, passed on to the museum window
+// as an "intro" event.
+func (s *MuseumService) ReportIntro(state IntroState) {
+	s.mu.Lock()
+	s.intro = state
+	s.mu.Unlock()
+	application.Get().Event.Emit("intro", state)
+}
+
+// Intro is what the projector's opening video does, for a window that just opened.
+func (s *MuseumService) Intro() IntroState {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.intro
 }
 
 func (s *MuseumService) Playback() museum.Playback {

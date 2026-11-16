@@ -15,11 +15,11 @@ go run . -lights off -video "C:\path\to\another.mp4"
 On Linux the projector's web view needs an H.264 decoder for GStreamer
 (`sudo dnf install gstreamer1-plugin-openh264` on Fedora).
 
-The video autoplays muted; **Enable video sound** enables its audio. When it ends,
+The video waits to be started from the museum window (the play button under the title, next to
+mute and skip), and plays with sound. When it ends,
 it fades into the piano map and the 88-key keyboard appears along the bottom.
-**Skip intro** and **Replay intro** are available in the top-right controls, and
-**Restart intro** in the museum window.
-If the file cannot be loaded, **Continue to map** still opens the live view.
+The projector itself has no controls; on the map, the play button turns into replay.
+If the file cannot be loaded, skip still opens the live view.
 The map needs internet access for its tiles.
 
 Start the AI helper using the setup below, keep the Go server and piano nodes

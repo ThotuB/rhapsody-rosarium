@@ -1,7 +1,7 @@
 import { Events } from '@wailsio/runtime'
 import { useEffect, useRef, useState } from 'react'
 import { noteName, notesAt } from '../piano'
-import { introVideo, tune, useMuseum } from '../useMuseum'
+import { IntroAction, introVideo, reportIntro, tune, useMuseum } from '../useMuseum'
 import { usePlayback } from '../usePlayback'
 import { PianoKeyboard } from './PianoKeyboard'
 import { PianoMap } from './PianoMap'
@@ -13,9 +13,10 @@ export function StreamProjector() {
     const video = useRef<HTMLVideoElement>(null)
     const [phase, setPhase] = useState<'intro' | 'map'>('intro')
     const [videoError, setVideoError] = useState('')
-    // starts with sound: the museum's web view lets videos autoplay unmuted (if it refuses, "Play film" shows)
+    // with sound: the museum's web view lets videos play unmuted without a click in this window
     const [muted, setMuted] = useState(false)
-    const [blocked, setBlocked] = useState(false)
+    // the intro waits for Start in the museum window; it waits again if the web view refuses to play
+    const [waiting, setWaiting] = useState(true)
     // where the video is loaded from: the app's own path, or on Linux a local server (see video.go)
     const [videoSrc, setVideoSrc] = useState<string>()
     useEffect(() => {
@@ -35,9 +36,9 @@ export function StreamProjector() {
     async function explainVideoError() {
         const playback = video.current?.error?.message || `media error ${video.current?.error?.code ?? '?'}`
         const info = await introVideo().catch(() => null)
-        if (!info) setVideoError(`The opening video could not be loaded (${playback}). Check the -video path, or continue to the map.`)
-        else if (!info.found) setVideoError(`No opening video at ${info.path}. Put it there or start with -video <path>, or continue to the map.`)
-        else setVideoError(`The opening video at ${info.path} (${Math.round(info.size / 2 ** 20)} MB) was found but can't be played (${playback}). On Linux this is usually a missing GStreamer H.264 decoder. Or continue to the map.`)
+        if (!info) setVideoError(`The opening video could not be loaded (${playback}). Check the -video path, or skip to the map from the museum window.`)
+        else if (!info.found) setVideoError(`No opening video at ${info.path}. Put it there or start with -video <path>, or skip to the map from the museum window.`)
+        else setVideoError(`The opening video at ${info.path} (${Math.round(info.size / 2 ** 20)} MB) was found but can't be played (${playback}). On Linux this is usually a missing GStreamer H.264 decoder. Or skip to the map from the museum window.`)
     }
 
     async function playIntro(restart: boolean) {
@@ -45,11 +46,19 @@ export function StreamProjector() {
         if (!element) return
         if (restart) element.currentTime = 0
         setPhase('intro')
-        setBlocked(false)
-        try { await element.play() } catch { setBlocked(true) }
+        setWaiting(false)
+        try { await element.play() } catch { setWaiting(true) }
     }
-    // the museum window's "Restart intro"
-    useEffect(() => Events.On('restart-intro', () => void playIntro(true)), [])
+    // the projector has no controls of its own: they're in the museum window, see useIntro
+    useEffect(() => Events.On('intro-action', (event) => {
+        switch (event.data as IntroAction) {
+            case IntroAction.IntroStart: return void playIntro(true)
+            case IntroAction.IntroMute: return setMuted(true)
+            case IntroAction.IntroUnmute: return setMuted(false)
+            case IntroAction.IntroSkip: return showMap()
+        }
+    }), [])
+    useEffect(() => { void reportIntro({ phase, playing: !waiting, muted }) }, [phase, waiting, muted])
 
     return <main className="stream-projector" data-phase={phase}>
         <section className="projector-map-area" aria-label="Map of the pianos" inert={phase === 'intro'}>
@@ -74,23 +83,12 @@ export function StreamProjector() {
         </section>
 
         <section className="projector-video-layer" aria-label="Opening film" aria-hidden={phase !== 'intro'} inert={phase !== 'intro'}>
-            <video ref={video} src={videoSrc} autoPlay muted={muted} playsInline preload="auto"
-                onEnded={showMap} onPlay={() => setBlocked(false)}
-                onError={() => void explainVideoError()}
-                onCanPlay={() => { if (phase === 'intro' && video.current?.paused) void playIntro(false) }} />
+            <video ref={video} src={videoSrc} muted={muted} playsInline preload="auto"
+                onEnded={showMap} onPlay={() => setWaiting(false)}
+                onError={() => void explainVideoError()} />
             <div className="projector-video-shade" />
             <div className="projector-film-caption"><span>RHAPSODY ROSARIUM</span><p>A city. A piano. A moment.</p></div>
-            {(videoError || blocked) && <div className="projector-video-message" role="status">
-                <p>{videoError || 'Press Play to start the opening film.'}</p>
-                {!videoError && <button onClick={() => playIntro(false)}>Play film</button>}
-                <button onClick={showMap}>Continue to map</button>
-            </div>}
+            {videoError && <p className="projector-video-message" role="status">{videoError}</p>}
         </section>
-        <nav className="projector-tools" aria-label="Projector controls">
-            {phase === 'intro' ? <>
-                <button onClick={() => setMuted(!muted)}>{muted ? 'Enable video sound' : 'Mute video'}</button>
-                <button onClick={showMap}>Skip intro →</button>
-            </> : <button onClick={() => playIntro(true)}>Replay intro</button>}
-        </nav>
     </main>
 }

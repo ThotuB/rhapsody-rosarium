@@ -1,6 +1,6 @@
 import { Events } from '@wailsio/runtime'
 import { useEffect, useState } from 'react'
-import { MuseumService } from '../bindings/rhapsody-rosarium/museum'
+import { IntroAction, MuseumService, type IntroState } from '../bindings/rhapsody-rosarium/museum'
 import type { View } from './api'
 
 // The controller's view: fetched once when the window opens, then pushed as "state" events.
@@ -26,5 +26,20 @@ export const stop = () => MuseumService.Stop()
 export const setLED = (id: string, colour: string) => MuseumService.SetLED(id, colour)
 // where the projector's opening video is read from (-video), and whether a file is there
 export const introVideo = () => MuseumService.IntroVideo()
-// plays the projector's opening video again from the start (a "restart-intro" event to the projector)
-export const restartIntro = () => MuseumService.RestartIntro()
+
+// The projector's opening video is controlled from the museum window: the actions go to the projector
+// as "intro-action" events, and it reports what it does back as "intro" events.
+export type { IntroState }
+export { IntroAction }
+export const controlIntro = (action: IntroAction) => MuseumService.ControlIntro(action)
+export const reportIntro = (state: IntroState) => MuseumService.ReportIntro(state)
+
+// What the projector's opening video does, for the museum window's controls.
+export function useIntro(): IntroState | null {
+    const [intro, setIntro] = useState<IntroState | null>(null)
+    useEffect(() => {
+        MuseumService.Intro().then(setIntro)
+        return Events.On('intro', (event) => setIntro(event.data as IntroState))
+    }, [])
+    return intro
+}
