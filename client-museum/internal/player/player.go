@@ -229,17 +229,19 @@ func (p *Player) Status() Status {
 	return st
 }
 
-// compact drops samples already played, so buf doesn't grow forever.
+// compact drops samples already played, so buf doesn't grow forever. It keeps the last fftSize
+// played, for Spectrum.
 func (p *Player) compact() {
 	if p.pos < Rate*5 {
 		return
 	}
-	p.buf = slices.Delete(p.buf, 0, p.pos)
+	drop := p.pos - fftSize
+	p.buf = slices.Delete(p.buf, 0, drop)
 	for i := range p.queued {
-		p.queued[i].start -= p.pos
-		p.queued[i].end -= p.pos
+		p.queued[i].start -= drop
+		p.queued[i].end -= drop
 	}
-	p.pos = 0
+	p.pos = fftSize
 }
 
 func fadeOut(s []int16) {

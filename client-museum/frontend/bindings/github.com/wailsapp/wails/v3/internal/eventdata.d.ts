@@ -14,6 +14,7 @@ declare module "@wailsio/runtime" {
         interface CustomEvents {
             "level": number;
             "playback": museum$0.Playback;
+            "spectrum": number[] | null;
             "state": museum$0.View;
         }
     }

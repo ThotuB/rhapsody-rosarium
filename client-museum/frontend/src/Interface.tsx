@@ -1,5 +1,6 @@
 import type { PianoState } from './api'
 import { PianoMap } from './components/PianoMap'
+import { Visualizer } from './components/Visualizer'
 import { IntroControls } from './IntroControls'
 import { LedPicker } from './LedPicker'
 import { describe, formatAgo, look } from './time'
@@ -47,7 +48,8 @@ export function Interface() {
                     <p className="rounded-lg bg-rose/15 px-3 py-2">Can't reach the server ({view.serverError}).</p>
                 )}
 
-                <section className="flex flex-col items-center gap-1 py-4 text-center" aria-live="polite">
+                <section className="flex flex-col items-center gap-1 pb-4 text-center" aria-live="polite">
+                    <Visualizer />
                     {tuned ? (
                         <>
                             <h2 className="text-lg font-bold">{tuned.name}</h2>

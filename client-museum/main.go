@@ -27,11 +27,15 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// bands in the "spectrum" events, for the rose in the museum window
+const spectrumBands = 64
+
 func init() {
 	// typed events, the binding generator picks these up for the frontend
 	application.RegisterEvent[museum.View]("state")
 	application.RegisterEvent[museum.Playback]("playback")
-	application.RegisterEvent[float64]("level") // loudness of what's playing, 0 to 1, ~20 times a second
+	application.RegisterEvent[float64]("level")      // loudness of what's playing, 0 to 1, ~20 times a second
+	application.RegisterEvent[[]float64]("spectrum") // of what's playing, spectrumBands from 0 to 6 kHz, each 0 to 1, ~20 times a second
 }
 
 func main() {
@@ -201,6 +205,7 @@ func runWindows(core *museum.Core, p *player.Player, video string) {
 				return
 			case <-tick.C:
 				app.Event.Emit("level", p.Status().Level)
+				app.Event.Emit("spectrum", p.Spectrum(spectrumBands))
 				app.Event.Emit("playback", core.Playback())
 				if i%10 == 0 { // playing / waiting changes on the audio side, between polls
 					app.Event.Emit("state", core.View())

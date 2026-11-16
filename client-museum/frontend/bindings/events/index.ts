@@ -19,6 +19,11 @@ export const Level = "level";
 export const Playback = "playback";
 
 /**
+ * Name of the custom event "spectrum".
+ */
+export const Spectrum = "spectrum";
+
+/**
  * Name of the custom event "state".
  */
 export const State = "state";
