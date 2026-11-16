@@ -18,8 +18,8 @@ wails3 build                # production build, to bin/museum
 ./bin/museum                # flags below
 ```
 
-The installation's fixed settings live in `museum-bulbs.json`, read from the folder the app runs from (`client-museum/`
-with `wails3 dev` and `task run`). Without the file it uses the defaults below.
+The installation's fixed settings live in `config/museum-bulbs.json`, read relative to the folder the app runs from
+(`client-museum/` with `wails3 dev` and `task run`). Without the file it uses the defaults below.
 
 ```json
 {
@@ -37,7 +37,7 @@ with `wails3 dev` and `task run`). Without the file it uses the defaults below.
 
 Flags override the file:
 
-- `-config museum-bulbs.json`: another settings file
+- `-config config/museum-bulbs.json`: another settings file
 - `-server http://localhost:8080`: the server
 - `-tune piano-2`: tune in at startup
 - `-headless`: no windows, logs what plays every 5 s
@@ -93,7 +93,7 @@ in the IDE's serial monitor (115200 baud, line ending "Newline") to try the wiri
 - `P 0 0.5`: strip 0 pulses every 2 s, `P 0 0` stops
 - `?`: answers `READY 6`
 
-What the bulbs show (`lights.go`), each following its piano from `museum-bulbs.json`:
+What the bulbs show (`internal/bulbs`), each following its piano from `config/museum-bulbs.json`:
 
 - the piano the museum is tuned in to: on, following the loudness of what plays (measured against the loudest
   recent sound, so a quiet microphone lights it as fully as a loud one; never below 20%, so it stays visibly on
@@ -101,18 +101,25 @@ What the bulbs show (`lights.go`), each following its piano from `museum-bulbs.j
 - other pianos someone is playing right now: a slow pulse, every 4 s, at a quarter brightness
 - the rest: off
 
-Tuning in to another piano moves the "on" to its bulb. The constants at the top of `lights.go` tune the feel.
+Tuning in to another piano moves the "on" to its bulb. The constants at the top of `internal/bulbs/bulbs.go` tune the feel.
 
 ## Layout
 
-- `main.go`: flags, audio output, the two windows, pushing `state` and `level` events to them
-- `config.go`, `museum-bulbs.json`: the installation's settings, overridden by flags
-- `museumservice.go`: what the windows can call: `State`, `Tune`, `Stop`
+Only the app's entry point is Go at the root: `main.go` embeds `frontend/dist`, and Go's embed can't reach
+outside the package's own folder, so that package has to sit above `frontend/`. Wails builds and runs it from
+there too (`wails3 dev`, `go run .`). Everything else is a package in `internal/`, Go's folder for packages only
+this module can import.
+
+- `main.go`: flags, audio output, the two windows, pushing `state`, `level`, `spectrum` and `playback` events to them
+- `museumservice.go`: what the windows can call (`State`, `Tune`, `Stop`, `SetLED`, the intro controls). It stays
+  next to `main.go` because the frontend's generated bindings are named after its package
+- `config/museum-bulbs.json`, `internal/config`: the installation's settings, overridden by flags
+- `internal/windows`: around the windows: fullscreen on the right screens, serving the projector's opening video
 - `internal/link`: the connection to the server (`/api/state`, segment downloads)
 - `internal/player`: gapless playback of one piano, the live-only rule, fades and pauses at missing windows, a short cushion against late segments. no sound card or windows, so it's tested on its own (`go test ./internal/...`)
 - `internal/audio`: the sound card (miniaudio through `malgo`, no system dev packages needed) or a silent stand-in
 - `internal/museum`: the core: polls the server, decides what to play, feeds the player
 - `internal/lights`: the led strips' board over USB serial: waits for it to be ready, sends what changed, sends everything again after a reset or replug
-- `lights.go`: what the strips show, from the museum's state
+- `internal/bulbs`: what the strips show, from the museum's state
 - `firmware/lights/`: the sketch for the strips' board (Magma Splash, Carbon V3 or Uno / Nano), and `dfu-util` to flash the Magma
 - `frontend/`: React + TypeScript + Tailwind. `PianoMap`, `time.ts` and the css are copied from `client-web` for now

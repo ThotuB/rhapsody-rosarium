@@ -1,6 +1,6 @@
 //go:build !linux || !cgo || gtk3
 
-package main
+package windows
 
 import "github.com/wailsapp/wails/v3/pkg/application"
 

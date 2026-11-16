@@ -20,8 +20,11 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/events"
 
 	"rhapsody-rosarium/museum/internal/audio"
+	"rhapsody-rosarium/museum/internal/bulbs"
+	"rhapsody-rosarium/museum/internal/config"
 	"rhapsody-rosarium/museum/internal/museum"
 	"rhapsody-rosarium/museum/internal/player"
+	"rhapsody-rosarium/museum/internal/windows"
 )
 
 //go:embed all:frontend/dist
@@ -39,8 +42,8 @@ func init() {
 }
 
 func main() {
-	configPath := flag.String("config", "museum-bulbs.json", "the installation's settings: server, lights board, which piano each strip follows")
-	server := flag.String("server", "", "the rhapsody rosarium server (overrides the config; default "+defaults.Server+")")
+	configPath := flag.String("config", filepath.Join("config", "museum-bulbs.json"), "the installation's settings: server, lights board, which piano each strip follows")
+	server := flag.String("server", "", "the rhapsody rosarium server (overrides the config; default "+config.Defaults.Server+")")
 	video := flag.String("video", filepath.Join("media", "intro.mp4"), "the projector's opening video (media/ is in git lfs)")
 	tune := flag.String("tune", "", "piano to tune in to at startup")
 	sink := flag.String("sink", "device", `where audio goes: "device" (the sound card) or "null" (nowhere, for testing)`)
@@ -54,11 +57,11 @@ func main() {
 
 	asked := false
 	flag.Visit(func(f *flag.Flag) { asked = asked || f.Name == "config" })
-	cfg, err := loadConfig(*configPath, asked)
+	cfg, err := config.Load(*configPath, asked)
 	if err != nil {
 		log.Fatal(err)
 	}
-	cfg.overrideWithFlags(*server, *lightsPort, *strips)
+	cfg.OverrideWithFlags(*server, *lightsPort, *strips)
 
 	p := player.New()
 	out, err := openOutput(*sink, p.Read)
@@ -73,7 +76,7 @@ func main() {
 	}
 
 	ctx, stopLights := context.WithCancel(context.Background())
-	lightsOff := startLights(ctx, cfg.Lights, cfg.Strips, core, func() float64 { return p.Status().Level })
+	lightsOff := bulbs.Start(ctx, cfg.Lights, cfg.Strips, core, func() float64 { return p.Status().Level })
 	defer func() {
 		stopLights()
 		select { // a moment to switch the strips off
@@ -139,7 +142,7 @@ func runWindows(core *museum.Core, p *player.Player, video string) {
 	if abs, err := filepath.Abs(video); err == nil {
 		video = abs
 	}
-	introURL := serveIntroVideo(video)
+	introURL := windows.ServeIntroVideo(video)
 	if info, err := os.Stat(video); err != nil {
 		slog.Warn("projector video not found, the projector will offer the map instead", "path", video)
 	} else {
@@ -157,8 +160,8 @@ func runWindows(core *museum.Core, p *player.Player, video string) {
 			Handler: application.AssetFileServerFS(assets),
 			Middleware: func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if r.URL.Path == introPath { // on Linux it's served from 127.0.0.1 instead, see video.go
-						introHandler(video).ServeHTTP(w, r)
+					if r.URL.Path == windows.IntroPath { // on Linux it's served from 127.0.0.1 instead, see windows.ServeIntroVideo
+						windows.IntroHandler(video).ServeHTTP(w, r)
 						return
 					}
 					next.ServeHTTP(w, r)
@@ -186,7 +189,7 @@ func runWindows(core *museum.Core, p *player.Player, video string) {
 	})
 	// with a second display, the museum window fullscreen on the laptop and the projector on the other
 	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
-		fullscreenOnScreens(app, museumWindow, projector)
+		windows.FullscreenOnScreens(app, museumWindow, projector)
 	})
 
 	core.OnChange(func() { app.Event.Emit("state", core.View()) })

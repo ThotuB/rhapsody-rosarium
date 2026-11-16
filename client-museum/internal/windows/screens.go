@@ -1,4 +1,6 @@
-package main
+// Package windows is what the museum's two windows need around them: going fullscreen on the right
+// screens, and serving the projector's opening video.
+package windows
 
 import (
 	"log/slog"
@@ -7,10 +9,10 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-// fullscreenOnScreens puts the museum window fullscreen on the laptop's own screen and the projector
+// FullscreenOnScreens puts the museum window fullscreen on the laptop's own screen and the projector
 // window fullscreen on the other one. With a single screen both stay normal windows, so neither
 // covers the only screen. Call it once the app has started.
-func fullscreenOnScreens(app *application.App, museum, projector *application.WebviewWindow) {
+func FullscreenOnScreens(app *application.App, museum, projector *application.WebviewWindow) {
 	if fullscreenOnMonitors(museum, projector) { // Linux, see screens_linux.go
 		return
 	}

@@ -1,4 +1,4 @@
-package main
+package windows
 
 import (
 	"io"
@@ -17,14 +17,14 @@ func TestIntroVideoServer(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	url := serveIntroVideo(video)
+	url := ServeIntroVideo(video)
 	if runtime.GOOS != "linux" {
-		if url != introPath {
+		if url != IntroPath {
 			t.Fatalf("off Linux the app's own path: %q", url)
 		}
 		return
 	}
-	if !strings.HasPrefix(url, "http://127.0.0.1:") || !strings.HasSuffix(url, introPath) {
+	if !strings.HasPrefix(url, "http://127.0.0.1:") || !strings.HasSuffix(url, IntroPath) {
 		t.Fatalf("on Linux a loopback url: %q", url)
 	}
 
@@ -44,7 +44,7 @@ func TestIntroVideoServer(t *testing.T) {
 		t.Errorf("content type %q, want video/mp4", ct)
 	}
 
-	other, err := http.Get(strings.TrimSuffix(url, introPath) + "/museum-bulbs.json")
+	other, err := http.Get(strings.TrimSuffix(url, IntroPath) + "/museum-bulbs.json")
 	if err != nil {
 		t.Fatal(err)
 	}

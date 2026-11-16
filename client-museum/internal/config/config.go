@@ -1,4 +1,6 @@
-package main
+// Package config is the museum installation's fixed settings: the server, the lights board and which
+// piano each bulb follows.
+package config
 
 import (
 	"bytes"
@@ -8,11 +10,13 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"strings"
 
 	"rhapsody-rosarium/museum/internal/lights"
 )
 
-// Config is the installation's fixed settings, from museum-bulbs.json in the folder the app runs from.
+// Config is the installation's fixed settings, from config/museum-bulbs.json (-config), relative to
+// the folder the app runs from.
 // Flags given on the command line override it.
 type Config struct {
 	Server string `json:"server"` // the rhapsody rosarium server
@@ -22,12 +26,13 @@ type Config struct {
 	Strips []string `json:"strips"`
 }
 
-var defaults = Config{Server: "http://localhost:8080", Lights: "auto"}
+// Defaults is what a setting left out of the file is.
+var Defaults = Config{Server: "http://localhost:8080", Lights: "auto"}
 
-// loadConfig reads the config at path. A missing file is fine if it's only the default path, then
+// Load reads the config at path. A missing file is fine if it's only the default path, then
 // it's the defaults; one asked for with -config has to be there.
-func loadConfig(path string, asked bool) (Config, error) {
-	c := defaults
+func Load(path string, asked bool) (Config, error) {
+	c := Defaults
 	data, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) && !asked {
 		return c, nil
@@ -46,8 +51,8 @@ func loadConfig(path string, asked bool) (Config, error) {
 	return c, nil
 }
 
-// overrideWithFlags replaces what the config says with the flags given on the command line.
-func (c *Config) overrideWithFlags(server, lightsPort, strips string) {
+// OverrideWithFlags replaces what the config says with the flags given on the command line.
+func (c *Config) OverrideWithFlags(server, lightsPort, strips string) {
 	flag.Visit(func(f *flag.Flag) {
 		switch f.Name {
 		case "server":
@@ -58,4 +63,17 @@ func (c *Config) overrideWithFlags(server, lightsPort, strips string) {
 			c.Strips = pianoList(strips)
 		}
 	})
+}
+
+// pianoList splits "piano-2,piano-3" into ids, nil for "". An empty slot ("piano-2,,piano-4") stays
+// in place as "", so the strips after it keep their pianos and that strip stays off.
+func pianoList(s string) []string {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+	var ids []string
+	for id := range strings.SplitSeq(s, ",") {
+		ids = append(ids, strings.TrimSpace(id))
+	}
+	return ids
 }

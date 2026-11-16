@@ -1,6 +1,6 @@
 //go:build linux && cgo && !gtk3
 
-package main
+package windows
 
 /*
 #cgo pkg-config: gtk4

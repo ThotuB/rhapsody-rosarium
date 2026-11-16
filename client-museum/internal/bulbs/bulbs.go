@@ -1,10 +1,11 @@
-package main
+// Package bulbs decides what the museum's led strips show, from the museum's state and the
+// loudness of what plays.
+package bulbs
 
 import (
 	"context"
 	"log/slog"
 	"math"
-	"strings"
 	"time"
 
 	"rhapsody-rosarium/museum/internal/lights"
@@ -12,7 +13,7 @@ import (
 	"rhapsody-rosarium/museum/internal/museum"
 )
 
-// What the bulbs show, each following one piano (see museum-bulbs.json):
+// What the bulbs show, each following one piano (see config/museum-bulbs.json):
 //   - the piano the museum is tuned in to: on, following the loudness of what plays
 //   - other pianos someone is playing right now: a slow pulse at a quarter brightness
 //   - the rest: off
@@ -36,10 +37,10 @@ const (
 	playingPulses = 0.25 // pulses per second: one every 4 s
 )
 
-// startLights drives the led strips from the museum's state and the loudness of what plays until
+// Start drives the led strips from the museum's state and the loudness of what plays until
 // ctx is done, and returns a channel closed once they're switched off. port is as for lights.New,
 // or "off".
-func startLights(ctx context.Context, port string, strips []string, core *museum.Core, level func() float64) <-chan struct{} {
+func Start(ctx context.Context, port string, strips []string, core *museum.Core, level func() float64) <-chan struct{} {
 	done := make(chan struct{})
 	if port == "off" {
 		close(done)
@@ -128,7 +129,7 @@ func level255(brightness float64) uint8 {
 }
 
 // warnUnknownPianos logs the strips set to follow a piano the server doesn't have, e.g. a typo in
-// museum-bulbs.json: those stay dark, which would otherwise look like a wiring fault.
+// config/museum-bulbs.json: those stay dark, which would otherwise look like a wiring fault.
 func warnUnknownPianos(strips []string, pianos []link.Piano) {
 	known := map[string]bool{}
 	for _, p := range pianos {
@@ -139,17 +140,4 @@ func warnUnknownPianos(strips []string, pianos []link.Piano) {
 			slog.Warn("lights: no such piano on the server, the strip stays off", "bulb", i+1, "piano", id)
 		}
 	}
-}
-
-// pianoList splits "piano-2,piano-3" into ids, nil for "". An empty slot ("piano-2,,piano-4") stays
-// in place as "", so the strips after it keep their pianos and that strip stays off.
-func pianoList(s string) []string {
-	if strings.TrimSpace(s) == "" {
-		return nil
-	}
-	var ids []string
-	for id := range strings.SplitSeq(s, ",") {
-		ids = append(ids, strings.TrimSpace(id))
-	}
-	return ids
 }

@@ -14,7 +14,7 @@ import (
 type MuseumService struct {
 	core     *museum.Core
 	video    string // the projector's opening video, an absolute path (-video)
-	introURL string // where the projector loads it from, see video.go
+	introURL string // where the projector loads it from, see internal/windows/video.go
 
 	mu    sync.Mutex
 	intro IntroState // as the projector last reported it

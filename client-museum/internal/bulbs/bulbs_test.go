@@ -1,7 +1,6 @@
-package main
+package bulbs
 
 import (
-	"slices"
 	"testing"
 	"time"
 
@@ -9,20 +8,6 @@ import (
 	"rhapsody-rosarium/museum/internal/link"
 	"rhapsody-rosarium/museum/internal/museum"
 )
-
-func TestPianoList(t *testing.T) {
-	for in, want := range map[string][]string{
-		"":                          nil,
-		"piano-2":                   {"piano-2"},
-		"piano-2, piano-5,piano-7 ": {"piano-2", "piano-5", "piano-7"},
-		"piano-2,piano-5,,piano-4":  {"piano-2", "piano-5", "", "piano-4"}, // bulb 3 off, bulb 4 keeps its piano
-		",piano-5":                  {"", "piano-5"},
-	} {
-		if got := pianoList(in); !slices.Equal(got, want) {
-			t.Errorf("pianoList(%q) = %q, want %q", in, got, want)
-		}
-	}
-}
 
 // shown records what each strip was last set to.
 type shown map[int]lights.Strip

@@ -1,4 +1,4 @@
-package main
+package windows
 
 import (
 	"log/slog"
@@ -14,29 +14,29 @@ import (
 // So on Linux the video comes from a small web server on 127.0.0.1 instead, where the player
 // gets ordinary range requests; elsewhere (WebView2 on Windows) it stays on the app's own path.
 
-const introPath = "/projector-intro.mp4"
+const IntroPath = "/projector-intro.mp4"
 
-// serveIntroVideo returns the URL the projector loads the video from, starting the loopback
+// ServeIntroVideo returns the URL the projector loads the video from, starting the loopback
 // server first on Linux. It falls back to the app's own path if that server can't start.
-func serveIntroVideo(video string) string {
+func ServeIntroVideo(video string) string {
 	if runtime.GOOS != "linux" {
-		return introPath
+		return IntroPath
 	}
 	ln, err := net.Listen("tcp", "127.0.0.1:0") // any free port, reachable only from this machine
 	if err != nil {
 		slog.Warn("projector video: no loopback server, trying the app's own path", "err", err)
-		return introPath
+		return IntroPath
 	}
-	srv := &http.Server{Handler: introHandler(video), ReadHeaderTimeout: 10 * time.Second}
+	srv := &http.Server{Handler: IntroHandler(video), ReadHeaderTimeout: 10 * time.Second}
 	go srv.Serve(ln)
-	return "http://" + ln.Addr().String() + introPath
+	return "http://" + ln.Addr().String() + IntroPath
 }
 
-// introHandler serves the video file at introPath, with range requests for seeking and
+// IntroHandler serves the video file at IntroPath, with range requests for seeking and
 // streaming; it's read from disk, not embedded in the build.
-func introHandler(video string) http.Handler {
+func IntroHandler(video string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != introPath {
+		if r.URL.Path != IntroPath {
 			http.NotFound(w, r)
 			return
 		}
