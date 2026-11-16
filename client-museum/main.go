@@ -33,6 +33,9 @@ var assets embed.FS
 // bands in the "spectrum" events, for the rose in the museum window
 const spectrumBands = 64
 
+// the app's id on Linux; build/linux/install-desktop.sh names its desktop entry after it
+const appID = "ro.rhapsodyrosarium.Museum"
+
 func init() {
 	// typed events, the binding generator picks these up for the frontend
 	application.RegisterEvent[museum.View]("state")
@@ -171,6 +174,9 @@ func runWindows(core *museum.Core, p *player.Player, video string) {
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
+		// the windows' Wayland app id: GNOME shows the icon of the .desktop file named after it, see
+		// build/linux/install-desktop.sh
+		Linux: application.LinuxOptions{ApplicationID: appID},
 	})
 
 	museumWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{

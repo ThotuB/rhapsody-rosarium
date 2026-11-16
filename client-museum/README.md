@@ -18,6 +18,10 @@ wails3 build                # production build, to bin/museum
 ./bin/museum                # flags below
 ```
 
+`build/linux/install-desktop.sh` adds the museum to GNOME's app grid, for the current user, so the dock shows
+its rose icon (`build/appicon.svg`, rendered to `appicon.png`) rather than the default Wails one. Run it again after
+moving the checkout, or with `--remove` to take it away.
+
 The installation's fixed settings live in `config/museum-bulbs.json`, read relative to the folder the app runs from
 (`client-museum/` with `wails3 dev` and `task run`). Without the file it uses the defaults below.
 
