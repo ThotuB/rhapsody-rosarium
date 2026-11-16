@@ -1,7 +1,7 @@
-// Package lights drives the museum's led strips through the board running firmware/lights (a
-// GroundStudio Magma Splash, a Carbon V3 or an Arduino), over USB serial. It keeps what every strip should show and sends it again whenever the board
-// (re)connects, so unplugging it or a reset never leaves the strips wrong. It never blocks its
-// callers: a missing board only means the strips stay dark.
+// Package lights drives the museum's led strips through the board running lights-board/lights-board.ino
+// (a GroundStudio Magma Splash, a Carbon V3 or an Arduino), over USB serial. It keeps what every strip
+// should show and sends it again whenever the board (re)connects, so unplugging it or a reset never
+// leaves the strips wrong. It never blocks its callers: a missing board only means the strips stay dark.
 package lights
 
 import (
@@ -190,7 +190,7 @@ func waitReady(ctx context.Context, port Port, lines <-chan string, dead <-chan 
 				return err
 			}
 		case <-give:
-			return errors.New("no READY from the board, is firmware/lights on it?")
+			return errors.New("no READY from the board, is lights-board.ino on it?")
 		}
 	}
 }

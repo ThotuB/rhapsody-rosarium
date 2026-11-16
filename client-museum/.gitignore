@@ -4,4 +4,4 @@ frontend/dist
 frontend/node_modules
 frontend/tsconfig.tsbuildinfo
 build/linux/appimage/build
-firmware/lights/build
+lights-board/build

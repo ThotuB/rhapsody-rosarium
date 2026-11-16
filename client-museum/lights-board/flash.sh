@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Flashes firmware/lights onto the Magma Splash over USB, with the dfu-util copy in firmware/lights.
+# Flashes lights-board.ino onto the Magma Splash over USB, with the dfu-util copy next to it.
 #
 # First, in the Arduino IDE: Sketch -> Export Compiled Binary (board settings in the README).
 # Then unplug the strips' 12 V supply (with it on, dfu mode doesn't connect over usb) and put the
 # Magma in dfu mode: hold BOOT0, tap NRST, release BOOT0.
 #
-#   ./flash-lights.sh            # the only Magma in dfu mode
-#   ./flash-lights.sh <serial>   # one of several, serials from: sudo firmware/lights/dfu-util -l
+#   ./flash.sh            # the only Magma in dfu mode
+#   ./flash.sh <serial>   # one of several, serials from: sudo ./dfu-util -l
 set -euo pipefail
 
-dir="$(cd "$(dirname "$0")/firmware/lights" && pwd)"
+dir="$(cd "$(dirname "$0")" && pwd)"
 dfu="$dir/dfu-util"
-bin="$dir/build/STMicroelectronics.stm32.GenF4/lights.ino.bin"
+bin="$dir/build/STMicroelectronics.stm32.GenF4/lights-board.ino.bin"
 # only STM32s in dfu mode: other devices show up in dfu mode too (a Framework laptop's camera does),
 # and flashing one of those could brick it
 device=0483:df11
@@ -20,8 +20,8 @@ if [ ! -f "$bin" ]; then
     echo "no binary at $bin: export it in the Arduino IDE first (Sketch -> Export Compiled Binary)" >&2
     exit 1
 fi
-if [ "$bin" -ot "$dir/lights.ino" ]; then
-    echo "the binary is older than lights.ino: export it again in the Arduino IDE first" >&2
+if [ "$bin" -ot "$dir/lights-board.ino" ]; then
+    echo "the binary is older than lights-board.ino: export it again in the Arduino IDE first" >&2
     exit 1
 fi
 

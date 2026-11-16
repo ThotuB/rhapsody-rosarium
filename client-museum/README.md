@@ -54,7 +54,7 @@ and skip to the map; on the map the same button replays it.
 
 ## Led strips
 
-Up to 6 single colour 12 V strips on a GroundStudio Magma Splash (STM32F411) running `firmware/lights/lights.ino`.
+Up to 6 single colour 12 V strips on a GroundStudio Magma Splash (STM32F411) running `lights-board/lights-board.ino`.
 The same sketch also runs on a GroundStudio Carbon V3 (ESP32) or an Arduino Uno / Nano, with each board's pins
 picked when it's compiled. The strips hang off L298N boards, wiring in the sketch's header and in `hardware.md`.
 12 V must never touch the board's pins: they're 3.3 V, and that's how the first Carbon V3 died.
@@ -66,18 +66,18 @@ To flash the Magma Splash:
    "STM32 MCU based boards" in the Boards Manager
 2. Tools: board "Generic STM32F4 series", board part number "BlackPill F411CE (HSE 25Mhz)", USB support
    "CDC (generic 'Serial' supersede U(S)ART)"
-3. Sketch → Export Compiled Binary (into `firmware/lights/build/`, ignored by git)
+3. Open `lights-board/lights-board.ino`, then Sketch → Export Compiled Binary (into `lights-board/build/`, ignored by git)
 4. Unplug the strips' 12 V supply: with it on, dfu mode doesn't connect over USB (the kernel logs
-   "device not accepting address, error -71"). Then upload mode: hold BOOT0, tap NRST, release BOOT0. `sudo ./dfu-util -l` (in `firmware/lights/`) lists it as
+   "device not accepting address, error -71"). Then upload mode: hold BOOT0, tap NRST, release BOOT0. `sudo ./dfu-util -l` (in `lights-board/`) lists it as
    `[0483:df11] … "@Internal Flash …"`
-5. Flash: `./flash-lights.sh` (asks for sudo). It finds the Magma in dfu mode by itself, refuses a binary older
+5. Flash: `lights-board/flash.sh` (asks for sudo). It finds the Magma in dfu mode by itself, refuses a binary older
    than the sketch, and waits for the board to come back as `/dev/ttyACM0`. By hand, naming the device: other
    things can show up in dfu mode too (a Framework laptop's camera does), and flashing the wrong one can brick it.
    Its serial number is in the `-l` list:
 
    ```sh
-   cd firmware/lights
-   sudo ./dfu-util -d 0483:df11 -S <serial> -a 0 -s 0x08000000:leave -D build/STMicroelectronics.stm32.GenF4/lights.ino.bin
+   cd lights-board
+   sudo ./dfu-util -d 0483:df11 -S <serial> -a 0 -s 0x08000000:leave -D build/STMicroelectronics.stm32.GenF4/lights-board.ino.bin
    ```
 
    "Device's firmware is corrupt" at the start is normal for dfu mode. `dfu-util` here is a static Linux x86-64
@@ -121,5 +121,5 @@ this module can import.
 - `internal/museum`: the core: polls the server, decides what to play, feeds the player
 - `internal/lights`: the led strips' board over USB serial: waits for it to be ready, sends what changed, sends everything again after a reset or replug
 - `internal/bulbs`: what the strips show, from the museum's state
-- `firmware/lights/`: the sketch for the strips' board (Magma Splash, Carbon V3 or Uno / Nano), and `dfu-util` to flash the Magma
+- `lights-board/`: the sketch for the strips' board (Magma Splash, Carbon V3 or Uno / Nano), `flash.sh` and `dfu-util` to flash the Magma
 - `frontend/`: React + TypeScript + Tailwind. `PianoMap`, `time.ts` and the css are copied from `client-web` for now
