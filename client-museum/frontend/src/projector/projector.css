@@ -1,5 +1,9 @@
-.stream-projector { height: 100dvh; overflow: hidden; background: #0c0c10; color: #f6eef2; display: flex; flex-direction: column; position: relative; }
-.projector-map-area { flex: 1; min-height: 0; position: relative; }
+/* The map fills the window and the piano lies over its bottom edge. The map never changes size when the piano
+   shows, as a resize blanks the map's canvas for a frame (the flicker); it keeps its view centred above the piano
+   instead, see bottomInset in PianoMap. */
+.stream-projector { --projector-piano-height: clamp(145px, 27vh, 310px); height: 100dvh; overflow: hidden; background: #0c0c10; color: #f6eef2; position: relative; }
+.projector-map-area { position: absolute; inset: 0; }
+.projector-map-area .maplibregl-ctrl-bottom-right { bottom: var(--projector-piano-height); }
 .projector-map-area > .relative { position: absolute; inset: 0; }
 /* Projector locations are quiet dots; the museum keeps its flower markers. */
 .projector-map-area .rose-marker { width: 14px; height: 14px; }
@@ -12,9 +16,9 @@
 .projector-title { position: absolute; top: 28px; left: 32px; pointer-events: none; text-shadow: 0 2px 12px #000; }
 .projector-title > span, .projector-film-caption > span { font-size: 10px; letter-spacing: .26em; color: #e1a3bc; }
 .projector-title h1 { font: 400 clamp(24px, 3vw, 45px) Georgia, serif; margin: 8px 0 0; }
-.projector-connection { position: absolute; left: 32px; bottom: 15px; padding: 8px 14px; background: #20151ed9; border-radius: 6px; font-size: 12px; }
-.projector-piano-area { flex-shrink: 0; height: 0; overflow: hidden; opacity: 0; transform: translateY(30px); background: linear-gradient(#231b24, #101015); border-top: 1px solid #e9a1bb38; transition: height 1.1s ease, opacity 1s ease .2s, transform 1.1s ease; }
-[data-phase='map'] .projector-piano-area { height: clamp(145px, 27vh, 310px); opacity: 1; transform: translateY(0); }
+.projector-connection { position: absolute; left: 32px; bottom: calc(var(--projector-piano-height) + 15px); padding: 8px 14px; background: #20151ed9; border-radius: 6px; font-size: 12px; }
+.projector-piano-area { position: absolute; left: 0; right: 0; bottom: 0; z-index: 1; height: var(--projector-piano-height); overflow: hidden; opacity: 0; transform: translateY(30px); background: linear-gradient(#231b24, #101015); border-top: 1px solid #e9a1bb38; transition: opacity 1s ease .2s, transform 1.1s ease; }
+[data-phase='map'] .projector-piano-area { opacity: 1; transform: translateY(0); }
 .projector-piano-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; height: 45px; padding: 7px 22px; }
 .projector-piano-heading > div { min-width: 0; display: flex; align-items: center; gap: 10px; }
 .projector-piano-heading strong { font-size: 12px; font-weight: 500; white-space: nowrap; }

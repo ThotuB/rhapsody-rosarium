@@ -11,6 +11,14 @@ export function ProjectorWindow() {
     const view = useMuseum()
     const playback = usePlayback()
     const video = useRef<HTMLVideoElement>(null)
+    // the piano lies over the map's bottom, which centres its view above it
+    const pianoArea = useRef<HTMLElement>(null)
+    const [pianoHeight, setPianoHeight] = useState(0)
+    useEffect(() => {
+        const resize = new ResizeObserver(() => setPianoHeight(pianoArea.current?.offsetHeight ?? 0))
+        resize.observe(pianoArea.current!)
+        return () => resize.disconnect()
+    }, [])
     const [phase, setPhase] = useState<'intro' | 'map'>('intro')
     const [videoError, setVideoError] = useState('')
     // with sound: the museum's web view lets videos play unmuted without a click in this window
@@ -62,13 +70,13 @@ export function ProjectorWindow() {
 
     return <main className="stream-projector" data-phase={phase}>
         <section className="projector-map-area" aria-label="Map of the pianos" inert={phase === 'intro'}>
-            <PianoMap projection pianos={view?.pianos ?? []} now={view?.now ?? new Date().toISOString()}
+            <PianoMap projection bottomInset={pianoHeight} pianos={view?.pianos ?? []} now={view?.now ?? new Date().toISOString()}
                 tunedId={view?.tuned || null} playing={view?.status === 'playing'} onTune={tune} />
             <div className="projector-title"><span>RHAPSODY ROSARIUM</span><h1>Listen to the city.</h1></div>
             {view?.serverError && <p className="projector-connection" role="status">Waiting for the piano server…</p>}
         </section>
 
-        <section className="projector-piano-area" aria-label="Piano following the museum audio" inert={phase === 'intro'}>
+        <section ref={pianoArea} className="projector-piano-area" aria-label="Piano following the museum audio" inert={phase === 'intro'}>
             <header className="projector-piano-heading">
                 <div><span className="projector-live-dot" data-playing={current?.playing || undefined} />
                     <strong>{piano?.name ?? 'Choose a piano in the museum window'}</strong>

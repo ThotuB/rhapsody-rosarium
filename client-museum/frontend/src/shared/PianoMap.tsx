@@ -49,9 +49,10 @@ type Props = {
     playing: boolean // the tuned piano is actually sounding, not waiting or blocked
     onTune: (id: string) => void
     projection?: boolean
+    bottomInset?: number // px of the map covered at its bottom (the projector's piano); the view centres above them
 }
 
-export function PianoMap({ pianos, now, tunedId, playing, onTune, projection = false }: Props) {
+export function PianoMap({ pianos, now, tunedId, playing, onTune, projection = false, bottomInset = 0 }: Props) {
     const container = useRef<HTMLDivElement>(null)
     const map = useRef<MapLibreMap | null>(null)
     const markers = useRef(new Map<string, Marker>())
@@ -108,6 +109,11 @@ export function PianoMap({ pianos, now, tunedId, playing, onTune, projection = f
             fitted.current = false
         }
     }, [projection])
+
+    // keeps the same centre, shown in the middle of the uncovered part
+    useEffect(() => {
+        map.current?.setPadding({ top: 0, right: 0, bottom: bottomInset, left: 0 })
+    }, [bottomInset, projection])
 
     // markers are created once per piano and updated in place on every poll (`now` changes each time)
     useEffect(() => {
