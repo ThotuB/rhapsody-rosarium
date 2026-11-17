@@ -28,7 +28,9 @@ export function ProjectorWindow() {
     // where the video is loaded from: the app's own path, or on Linux a local server (see internal/windows/video.go)
     const [videoSrc, setVideoSrc] = useState<string>()
     useEffect(() => {
-        introVideo().then((info) => setVideoSrc(info.url)).catch(() => setVideoSrc('/projector-intro.mp4'))
+        introVideo()
+            .then((info) => setVideoSrc(info.url))
+            .catch(() => setVideoSrc('/projector-intro.mp4'))
     }, [])
     const piano = view?.pianos.find((p) => p.id === view.tuned)
     // Drop old-piano events immediately when the operator selects another station.
@@ -44,9 +46,18 @@ export function ProjectorWindow() {
     async function explainVideoError() {
         const playback = video.current?.error?.message || `media error ${video.current?.error?.code ?? '?'}`
         const info = await introVideo().catch(() => null)
-        if (!info) setVideoError(`The opening video could not be loaded (${playback}). Check the -video path, or skip to the map from the museum window.`)
-        else if (!info.found) setVideoError(`No opening video at ${info.path}. Put it there or start with -video <path>, or skip to the map from the museum window.`)
-        else setVideoError(`The opening video at ${info.path} (${Math.round(info.size / 2 ** 20)} MB) was found but can't be played (${playback}). On Linux this is usually a missing GStreamer H.264 decoder. Or skip to the map from the museum window.`)
+        if (!info)
+            setVideoError(
+                `The opening video could not be loaded (${playback}). Check the -video path, or skip to the map from the museum window.`,
+            )
+        else if (!info.found)
+            setVideoError(
+                `No opening video at ${info.path}. Put it there or start with -video <path>, or skip to the map from the museum window.`,
+            )
+        else
+            setVideoError(
+                `The opening video at ${info.path} (${Math.round(info.size / 2 ** 20)} MB) was found but can't be played (${playback}). On Linux this is usually a missing GStreamer H.264 decoder. Or skip to the map from the museum window.`,
+            )
     }
 
     async function playIntro(restart: boolean) {
@@ -55,48 +66,118 @@ export function ProjectorWindow() {
         if (restart) element.currentTime = 0
         setPhase('intro')
         setWaiting(false)
-        try { await element.play() } catch { setWaiting(true) }
+        try {
+            await element.play()
+        } catch {
+            setWaiting(true)
+        }
     }
     // the projector has no controls of its own: they're in the museum window, see useIntro
-    useEffect(() => Events.On('intro-action', (event) => {
-        switch (event.data as IntroAction) {
-            case IntroAction.IntroStart: return void playIntro(true)
-            case IntroAction.IntroMute: return setMuted(true)
-            case IntroAction.IntroUnmute: return setMuted(false)
-            case IntroAction.IntroSkip: return showMap()
-        }
-    }), [])
-    useEffect(() => { void reportIntro({ phase, playing: !waiting, muted }) }, [phase, waiting, muted])
+    useEffect(
+        () =>
+            Events.On('intro-action', (event) => {
+                switch (event.data as IntroAction) {
+                    case IntroAction.IntroStart:
+                        return void playIntro(true)
+                    case IntroAction.IntroMute:
+                        return setMuted(true)
+                    case IntroAction.IntroUnmute:
+                        return setMuted(false)
+                    case IntroAction.IntroSkip:
+                        return showMap()
+                }
+            }),
+        [],
+    )
+    useEffect(() => {
+        void reportIntro({ phase, playing: !waiting, muted })
+    }, [phase, waiting, muted])
 
-    return <main className="stream-projector" data-phase={phase}>
-        <section className="projector-map-area" aria-label="Map of the pianos" inert={phase === 'intro'}>
-            <PianoMap projection bottomInset={pianoHeight} pianos={view?.pianos ?? []} now={view?.now ?? new Date().toISOString()}
-                tunedId={view?.tuned || null} playing={view?.status === 'playing'} onTune={tune} />
-            <div className="projector-title"><span>RHAPSODY ROSARIUM</span><h1>Listen to the city.</h1></div>
-            {view?.serverError && <p className="projector-connection" role="status">Waiting for the piano server…</p>}
-        </section>
+    return (
+        <main className="stream-projector" data-phase={phase}>
+            <section className="projector-map-area" aria-label="Map of the pianos" inert={phase === 'intro'}>
+                <PianoMap
+                    projection
+                    bottomInset={pianoHeight}
+                    pianos={view?.pianos ?? []}
+                    now={view?.now ?? new Date().toISOString()}
+                    tunedId={view?.tuned || null}
+                    playing={view?.status === 'playing'}
+                    onTune={tune}
+                />
+                <div className="projector-title">
+                    <span>RHAPSODY ROSARIUM</span>
+                    <h1>Listen to the city.</h1>
+                </div>
+                {view?.serverError && (
+                    <p className="projector-connection" role="status">
+                        Waiting for the piano server…
+                    </p>
+                )}
+            </section>
 
-        <section ref={pianoArea} className="projector-piano-area" aria-label="Piano following the museum audio" inert={phase === 'intro'}>
-            <header className="projector-piano-heading">
-                <div><span className="projector-live-dot" data-playing={current?.playing || undefined} />
-                    <strong>{piano?.name ?? 'Choose a piano in the museum window'}</strong>
-                    <span className="projector-stream-status">{!piano ? 'Ready to listen' : current?.analysisError
-                        ? current.analysisError : current?.playing
-                            ? current.notes.length ? 'Following the sound' : 'No notes detected in this segment'
-                            : 'Waiting for audio / recognizing notes…'}</span></div>
-                <span className="projector-note-names">{active.map(noteName).join(' · ') || '—'}</span>
-            </header>
-            <PianoKeyboard notes={current?.notes ?? []} position={current?.position ?? 0} playing={current?.playing ?? false} />
-            <div className="projector-piano-foot"><span>ROSARIUM</span><span>88 KEYS · LIVE AUDIO</span></div>
-        </section>
+            <section
+                ref={pianoArea}
+                className="projector-piano-area"
+                aria-label="Piano following the museum audio"
+                inert={phase === 'intro'}
+            >
+                <header className="projector-piano-heading">
+                    <div>
+                        <span className="projector-live-dot" data-playing={current?.playing || undefined} />
+                        <strong>{piano?.name ?? 'Choose a piano in the museum window'}</strong>
+                        <span className="projector-stream-status">
+                            {!piano
+                                ? 'Ready to listen'
+                                : current?.analysisError
+                                  ? current.analysisError
+                                  : current?.playing
+                                    ? current.notes.length
+                                        ? 'Following the sound'
+                                        : 'No notes detected in this segment'
+                                    : 'Waiting for audio / recognizing notes…'}
+                        </span>
+                    </div>
+                    <span className="projector-note-names">{active.map(noteName).join(' · ') || '—'}</span>
+                </header>
+                <PianoKeyboard
+                    notes={current?.notes ?? []}
+                    position={current?.position ?? 0}
+                    playing={current?.playing ?? false}
+                />
+                <div className="projector-piano-foot">
+                    <span>ROSARIUM</span>
+                    <span>88 KEYS · LIVE AUDIO</span>
+                </div>
+            </section>
 
-        <section className="projector-video-layer" aria-label="Opening film" aria-hidden={phase !== 'intro'} inert={phase !== 'intro'}>
-            <video ref={video} src={videoSrc} muted={muted} playsInline preload="auto"
-                onEnded={showMap} onPlay={() => setWaiting(false)}
-                onError={() => void explainVideoError()} />
-            <div className="projector-video-shade" />
-            <div className="projector-film-caption"><span>RHAPSODY ROSARIUM</span><p>A city. A piano. A moment.</p></div>
-            {videoError && <p className="projector-video-message" role="status">{videoError}</p>}
-        </section>
-    </main>
+            <section
+                className="projector-video-layer"
+                aria-label="Opening film"
+                aria-hidden={phase !== 'intro'}
+                inert={phase !== 'intro'}
+            >
+                <video
+                    ref={video}
+                    src={videoSrc}
+                    muted={muted}
+                    playsInline
+                    preload="auto"
+                    onEnded={showMap}
+                    onPlay={() => setWaiting(false)}
+                    onError={() => void explainVideoError()}
+                />
+                <div className="projector-video-shade" />
+                <div className="projector-film-caption">
+                    <span>RHAPSODY ROSARIUM</span>
+                    <p>A city. A piano. A moment.</p>
+                </div>
+                {videoError && (
+                    <p className="projector-video-message" role="status">
+                        {videoError}
+                    </p>
+                )}
+            </section>
+        </main>
+    )
 }

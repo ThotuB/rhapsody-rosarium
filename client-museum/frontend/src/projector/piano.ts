@@ -17,29 +17,50 @@ export const WHITE_KEYS = whites
 
 export function readTranscription(value: unknown): Transcription {
     const data = value as Partial<Transcription> | null
-    if (!data || !Array.isArray(data.notes) || !Number.isFinite(data.duration) ||
-        data.duration! <= 0 || data.duration! > MAX_WAV_SECONDS ||
-        !Number.isFinite(data.analysisSeconds) || data.analysisSeconds! < 0) {
+    if (
+        !data ||
+        !Array.isArray(data.notes) ||
+        !Number.isFinite(data.duration) ||
+        data.duration! <= 0 ||
+        data.duration! > MAX_WAV_SECONDS ||
+        !Number.isFinite(data.analysisSeconds) ||
+        data.analysisSeconds! < 0
+    ) {
         throw new Error('The note recognition helper returned an invalid result.')
     }
     const notes = data.notes.map((note) => {
-        if (!note || !Number.isInteger(note.pitch) || note.pitch < 21 || note.pitch > 108 ||
-            !Number.isFinite(note.start) || note.start < 0 || note.start >= data.duration! ||
-            !Number.isFinite(note.duration) || note.duration <= 0 ||
+        if (
+            !note ||
+            !Number.isInteger(note.pitch) ||
+            note.pitch < 21 ||
+            note.pitch > 108 ||
+            !Number.isFinite(note.start) ||
+            note.start < 0 ||
+            note.start >= data.duration! ||
+            !Number.isFinite(note.duration) ||
+            note.duration <= 0 ||
             note.start + note.duration > data.duration! + 0.01 ||
-            !Number.isFinite(note.velocity) || note.velocity < 0 || note.velocity > 127) {
+            !Number.isFinite(note.velocity) ||
+            note.velocity < 0 ||
+            note.velocity > 127
+        ) {
             throw new Error('The note recognition helper returned invalid note timing.')
         }
         return note
     })
-    return { notes: notes.sort((a, b) => a.start - b.start), duration: data.duration!, analysisSeconds: data.analysisSeconds! }
+    return {
+        notes: notes.sort((a, b) => a.start - b.start),
+        duration: data.duration!,
+        analysisSeconds: data.analysisSeconds!,
+    }
 }
 
 export function notesAt(notes: PianoNote[], seconds: number): Map<number, number> {
     const active = new Map<number, number>()
     for (const note of notes) {
         if (note.start > seconds) break
-        if (seconds < note.start + note.duration) active.set(note.pitch, Math.max(active.get(note.pitch) ?? 0, note.velocity))
+        if (seconds < note.start + note.duration)
+            active.set(note.pitch, Math.max(active.get(note.pitch) ?? 0, note.velocity))
     }
     return active
 }
