@@ -1,0 +1,15 @@
+[project]
+name = "transcriber"
+version = "0.1.0"
+description = "Recognises the piano notes in the museum's segments, for the projector's keyboard"
+# 3.10 only: Basic Pitch 0.4 runs ONNX on Windows and TFLite on Linux with it, on 3.11 it wants all of TensorFlow
+requires-python = "==3.10.*"
+dependencies = [
+    "basic-pitch==0.4.0",
+    "onnxruntime>=1.17,<2",
+    "numpy>=1.23,<2",
+    "soundfile>=0.12,<1",
+    # resampy (from basic-pitch) imports pkg_resources: venvs made with uv don't include setuptools,
+    # and setuptools 81 dropped pkg_resources
+    "setuptools<81",
+]

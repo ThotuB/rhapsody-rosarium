@@ -1,17 +1,17 @@
-"""Local WAV-to-note helper for the projector prototype (Python 3.10).
+"""The transcriber: WAV to piano notes for the projector's keyboard (Python 3.10).
 
-Run after installing requirements.txt. Files live in a temporary directory and
+Run with `uv run serve.py`, see README.md. Files live in a temporary directory and
 are removed after inference. The model is loaded once and reused.
 """
 
 import json
 import logging
 import math
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
 import tempfile
 import threading
 import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 
 MAX_BYTES = 32 * 1024 * 1024
 MAX_SECONDS = 180
@@ -27,10 +27,14 @@ def normalize_notes(events, duration):
         if not all(math.isfinite(v) for v in (start, end, velocity)):
             continue
         if 21 <= pitch <= 108 and end > start:
-            notes.append({
-                "pitch": pitch, "start": start, "duration": end - start,
-                "velocity": max(0, min(127, round(velocity * 127))),
-            })
+            notes.append(
+                {
+                    "pitch": pitch,
+                    "start": start,
+                    "duration": end - start,
+                    "velocity": max(0, min(127, round(velocity * 127))),
+                }
+            )
     return sorted(notes, key=lambda note: note["start"])
 
 
@@ -61,7 +65,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/health":
-            self.reply(200, {"ready": True, "model": "Basic Pitch", "busy": MODEL_LOCK.locked()})
+            self.reply(
+                200,
+                {"ready": True, "model": "Basic Pitch", "busy": MODEL_LOCK.locked()},
+            )
         else:
             self.reply(404, {"error": "Unknown endpoint."})
 
@@ -78,14 +85,23 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(413, {"error": "Choose a nonempty WAV smaller than 32 MB."})
             return
         if not MODEL_LOCK.acquire(blocking=False):
-            self.reply(409, {"error": "Another recording is being analyzed. Wait for it to finish, then retry."})
+            self.reply(
+                409,
+                {
+                    "error": "Another recording is being analyzed. Wait for it to finish, then retry."
+                },
+            )
             return
         try:
             audio = self.rfile.read(size)
             if len(audio) != size:
                 self.reply(400, {"error": "The audio upload was incomplete."})
                 return
-            if len(audio) < 12 or audio[:4] not in (b"RIFF", b"RF64") or audio[8:12] != b"WAVE":
+            if (
+                len(audio) < 12
+                or audio[:4] not in (b"RIFF", b"RF64")
+                or audio[8:12] != b"WAVE"
+            ):
                 self.reply(400, {"error": "This file is not a WAV recording."})
                 return
             with tempfile.TemporaryDirectory(prefix="rosarium-notes-") as directory:
@@ -93,43 +109,74 @@ class Handler(BaseHTTPRequestHandler):
                 path.write_bytes(audio)
                 try:
                     import soundfile as sf
+
                     info = sf.info(str(path))
                 except Exception:
-                    self.reply(400, {"error": "Cannot decode this WAV. Export it as 16-bit PCM WAV."})
+                    self.reply(
+                        400,
+                        {
+                            "error": "Cannot decode this WAV. Export it as 16-bit PCM WAV."
+                        },
+                    )
                     return
                 duration = float(info.duration)
                 if not math.isfinite(duration) or not 0 < duration <= MAX_SECONDS:
-                    self.reply(400, {"error": "Choose a recording between 0 and 180 seconds long."})
+                    self.reply(
+                        400,
+                        {"error": "Choose a recording between 0 and 180 seconds long."},
+                    )
                     return
                 started = time.monotonic()
-                _, _, events = self.server.predict(str(path), self.server.model,
-                    minimum_frequency=27.5, maximum_frequency=4187.0,
-                    minimum_note_length=80.0)
-                self.reply(200, {"notes": normalize_notes(events, duration), "duration": duration,
-                                 "analysisSeconds": round(time.monotonic() - started, 3)})
+                _, _, events = self.server.predict(
+                    str(path),
+                    self.server.model,
+                    minimum_frequency=27.5,
+                    maximum_frequency=4187.0,
+                    minimum_note_length=80.0,
+                )
+                self.reply(
+                    200,
+                    {
+                        "notes": normalize_notes(events, duration),
+                        "duration": duration,
+                        "analysisSeconds": round(time.monotonic() - started, 3),
+                    },
+                )
         except (TimeoutError, ConnectionError):
             logging.warning("Upload connection closed or timed out")
         except Exception:
             logging.exception("Transcription failed")
-            self.reply(500, {"error": "Note recognition failed. See the Python helper terminal for details."})
+            self.reply(
+                500,
+                {
+                    "error": "Note recognition failed. See the Python helper terminal for details."
+                },
+            )
         finally:
             MODEL_LOCK.release()
 
 
 def main():
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-    print("Loading Basic Pitch. The first analysis may take longer while libraries warm up.", flush=True)
+    print(
+        "Loading Basic Pitch. The first analysis may take longer while libraries warm up.",
+        flush=True,
+    )
     from basic_pitch import ICASSP_2022_MODEL_PATH
     from basic_pitch.inference import Model, predict
+
     model = Model(ICASSP_2022_MODEL_PATH)
     server = ThreadingHTTPServer(("127.0.0.1", 8765), Handler)
     server.daemon_threads = True
     server.model, server.predict = model, predict
-    print("Ready at http://127.0.0.1:8765 — choose a WAV in the projector window.", flush=True)
+    print(
+        "Ready at http://127.0.0.1:8765, for the museum app.",
+        flush=True,
+    )
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\nStopping local transcription helper.", flush=True)
+        print("\nStopping the transcriber.", flush=True)
     finally:
         server.server_close()
 

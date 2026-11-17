@@ -23,7 +23,7 @@ between the recording's end and beginning may be audible. Normal simulated
 recording/upload timing and sequence numbers are retained. Avoid `--fast` for
 listening tests.
 
-Keep the server and museum's transcription helper running, then choose
+Keep the server and the museum's transcriber (`client-museum/transcriber`) running, then choose
 **Piața Libertății** in the museum window. The recording goes through the same
 server, recognition, speaker playback, and projector-keyboard pipeline as live
 piano-node audio. You may join in the middle of the recording because the museum
