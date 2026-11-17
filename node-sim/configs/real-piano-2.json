@@ -1,11 +1,11 @@
 {
-    "server": "http://localhost:8080/api",
-    "segment_seconds": 2,
-    "pianos": [
-        { "id": "piano-3" },
-        { "id": "piano-4" },
-        { "id": "piano-5" },
-        { "id": "piano-6", "mute": true },
-        { "id": "piano-7", "stop_after": 30 }
-    ]
+  "server": "http://localhost:8080/api",
+  "segment_seconds": 2,
+  "pianos": [
+    { "id": "piano-3" },
+    { "id": "piano-4" },
+    { "id": "piano-5" },
+    { "id": "piano-6", "mute": true },
+    { "id": "piano-7", "stop_after": 30 }
+  ]
 }

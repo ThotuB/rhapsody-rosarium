@@ -1,9 +1,9 @@
 """Turn a recording into consecutive, looping 48 kHz PCM WAV segments."""
 
 import io
-from pathlib import Path
 import subprocess
 import wave
+from pathlib import Path
 
 import numpy as np
 
@@ -22,17 +22,41 @@ class WavVoice:
         # Match the server's mono 48 kHz format once before starting any nodes.
         # FFmpeg handles stereo/float/24-bit WAVs as well as ordinary PCM files.
         try:
-            result = subprocess.run([
-                "ffmpeg", "-nostdin", "-v", "error", "-i", str(path),
-                "-vn", "-ac", "1", "-ar", str(RATE), "-c:a", "pcm_s16le",
-                "-f", "s16le", "pipe:1",
-            ], capture_output=True, check=True, timeout=120)
+            result = subprocess.run(
+                [
+                    "ffmpeg",
+                    "-nostdin",
+                    "-v",
+                    "error",
+                    "-i",
+                    str(path),
+                    "-vn",
+                    "-ac",
+                    "1",
+                    "-ar",
+                    str(RATE),
+                    "-c:a",
+                    "pcm_s16le",
+                    "-f",
+                    "s16le",
+                    "pipe:1",
+                ],
+                capture_output=True,
+                check=True,
+                timeout=120,
+            )
         except FileNotFoundError as error:
-            raise ValueError("FFmpeg is required for --wav. Add ffmpeg.exe to this terminal's PATH.") from error
+            raise ValueError(
+                "FFmpeg is required for --wav. Add ffmpeg.exe to this terminal's PATH."
+            ) from error
         except subprocess.CalledProcessError as error:
-            raise ValueError(f"Cannot decode WAV: {error.stderr.decode(errors='replace')[:500]}") from error
+            raise ValueError(
+                f"Cannot decode WAV: {error.stderr.decode(errors='replace')[:500]}"
+            ) from error
         except subprocess.TimeoutExpired as error:
-            raise ValueError("WAV decoding timed out. Try a shorter recording.") from error
+            raise ValueError(
+                "WAV decoding timed out. Try a shorter recording."
+            ) from error
         return cls(result.stdout)
 
     def segment(self, seconds: float) -> bytes:

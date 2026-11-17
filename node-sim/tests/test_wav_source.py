@@ -1,9 +1,9 @@
 import io
-from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import patch
 import wave
+from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 
@@ -14,7 +14,11 @@ from wav_source import WavVoice
 
 def decode(data):
     with wave.open(io.BytesIO(data)) as wav:
-        assert (wav.getnchannels(), wav.getsampwidth(), wav.getframerate()) == (1, 2, RATE)
+        assert (wav.getnchannels(), wav.getsampwidth(), wav.getframerate()) == (
+            1,
+            2,
+            RATE,
+        )
         return np.frombuffer(wav.readframes(wav.getnframes()), dtype="<i2").tolist()
 
 
@@ -23,7 +27,9 @@ class WavSourceTests(unittest.TestCase):
         voice = WavVoice(np.array([100, -100, 1200, -200], dtype="<i2").tobytes())
         self.assertEqual(decode(voice.segment(3 / RATE)), [100, -100, 1200])
         self.assertEqual(decode(voice.segment(3 / RATE)), [-200, 100, -100])
-        self.assertEqual(decode(voice.segment(6 / RATE)), [1200, -200, 100, -100, 1200, -200])
+        self.assertEqual(
+            decode(voice.segment(6 / RATE)), [1200, -200, 100, -100, 1200, -200]
+        )
 
     def test_empty_recording_is_rejected(self):
         with self.assertRaises(ValueError):
@@ -43,7 +49,9 @@ class WavSourceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as directory:
             path = Path(directory) / "recording.wav"
             path.write_bytes(b"wav")
-            with patch("sys.argv", ["simulate.py", "--wav", str(path), "--mute", "piano-2"]):
+            with patch(
+                "sys.argv", ["simulate.py", "--wav", str(path), "--mute", "piano-2"]
+            ):
                 with patch("sys.stderr", io.StringIO()), self.assertRaises(SystemExit):
                     config.load()
 

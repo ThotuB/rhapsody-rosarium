@@ -1,16 +1,16 @@
 {
-    "fast": true,
-    "segment_seconds": 4,
-    "pianos": [
-        { "id": "piano-1" },
-        { "id": "piano-2" },
-        { "id": "piano-3" },
-        { "id": "piano-4" },
-        { "id": "piano-5" },
-        { "id": "piano-6" },
-        { "id": "piano-7" },
-        { "id": "piano-8" },
-        { "id": "piano-9" },
-        { "id": "piano-10" }
-    ]
+  "fast": true,
+  "segment_seconds": 4,
+  "pianos": [
+    { "id": "piano-1" },
+    { "id": "piano-2" },
+    { "id": "piano-3" },
+    { "id": "piano-4" },
+    { "id": "piano-5" },
+    { "id": "piano-6" },
+    { "id": "piano-7" },
+    { "id": "piano-8" },
+    { "id": "piano-9" },
+    { "id": "piano-10" }
+  ]
 }
