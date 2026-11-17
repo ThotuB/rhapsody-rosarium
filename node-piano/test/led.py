@@ -1,7 +1,7 @@
+import math
+from time import sleep
 
 from gpiozero import DigitalOutputDevice, PWMOutputDevice
-from time import sleep
-import math
 
 # RGB channels (active LOW), pins as wired (see test/channels.py)
 red = DigitalOutputDevice(22, initial_value=True)
@@ -27,9 +27,7 @@ def breathe(duration=4, steps=100):
         for i in range(steps + 1):
             progress = i / steps
 
-            intensity = (
-                1 - math.cos(2 * math.pi * progress)
-            ) / 2
+            intensity = (1 - math.cos(2 * math.pi * progress)) / 2
 
             purple(intensity)
             sleep(duration / steps)
@@ -39,9 +37,9 @@ try:
     ena.value = 1
     enb.value = 1
     # Fixed color: RED + BLUE = PURPLE
-    red.off()       # IN1 LOW, red channel ON
-    green.on()      # IN2 HIGH, green channel OFF
-    blue.off()      # IN3 LOW, blue channel ON
+    red.off()  # IN1 LOW, red channel ON
+    green.on()  # IN2 HIGH, green channel OFF
+    blue.off()  # IN3 LOW, blue channel ON
 
     print("Purple breathing effect started")
     breathe(duration=4)

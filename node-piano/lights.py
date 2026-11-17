@@ -11,16 +11,23 @@ import time
 
 from gpiozero import DigitalOutputDevice, PWMOutputDevice
 
-
 # Pulse configuration
-PULSES_PER_LISTENER = 0.25  # Pulses per second added by each listener: 1 -> every 4 s, 2 -> every 2 s
+PULSES_PER_LISTENER = (
+    0.25  # Pulses per second added by each listener: 1 -> every 4 s, 2 -> every 2 s
+)
 MAX_PULSES = 2.5  # Pulses per second at most, from 10 listeners on
-FADE_SPEED = 0.6  # How fast the light fades in / out when listeners come and go, per second
+FADE_SPEED = (
+    0.6  # How fast the light fades in / out when listeners come and go, per second
+)
 UPDATE_INTERVAL = 0.02
 
 # Colour configuration
-DEFAULT_COLOUR = "#ff00ff"  # Purple, until the museum sets another (the server's default too)
-COLOUR_FADE = 2.0  # How fast a new colour fades in, per second: half a second from one to another
+DEFAULT_COLOUR = (
+    "#ff00ff"  # Purple, until the museum sets another (the server's default too)
+)
+COLOUR_FADE = (
+    2.0  # How fast a new colour fades in, per second: half a second from one to another
+)
 
 
 def pulses_for(listeners):
@@ -62,11 +69,7 @@ class Light:
 
     def start(self, stop):
         """Pulse in a thread of its own until stop is set."""
-        self.thread = threading.Thread(
-            target=self.run,
-            args=(stop,),
-            daemon=True
-        )
+        self.thread = threading.Thread(target=self.run, args=(stop,), daemon=True)
         self.thread.start()
 
     def show(self, listeners, colour=None):
@@ -86,7 +89,9 @@ class Light:
         level = 0.0  # Fades to 1 while anyone listens, to 0 once nobody does
         rate = 0.0
         with self.lock:
-            shown = list(self.colour)  # The colour shown now, fading towards self.colour
+            shown = list(
+                self.colour
+            )  # The colour shown now, fading towards self.colour
         last_time = time.monotonic()
 
         while not stop.is_set():
@@ -109,9 +114,7 @@ class Light:
 
             # A new colour fades in instead of jumping
             step = COLOUR_FADE * dt
-            shown = [
-                c + max(-step, min(step, t - c)) for c, t in zip(shown, target)
-            ]
+            shown = [c + max(-step, min(step, t - c)) for c, t in zip(shown, target)]
 
             # Smoothly OFF -> ON -> OFF once per pulse
             brightness = level * (1 - math.cos(2 * math.pi * phase)) / 2

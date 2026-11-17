@@ -12,10 +12,10 @@ import threading
 import time
 
 import requests
+
 import api
 import lights
 import record
-
 
 # Configuration
 RETRY_SECONDS = 3
@@ -32,6 +32,7 @@ UPLOAD_TIMEOUT = (3, 6)
 # Heartbeat
 # ---------------------------
 
+
 def heartbeat(stop, args, light):
     """Tell the server the node is online, and show its listeners on the LED,
     in the colour the museum set."""
@@ -43,12 +44,7 @@ def heartbeat(stop, args, light):
         colour = None  # Keep the last colour on connection loss
 
         try:
-            response = api.post_heartbeat(
-                session,
-                args.server,
-                args.id,
-                args.token
-            )
+            response = api.post_heartbeat(session, args.server, args.id, args.token)
 
             if response.ok:
                 # {"listeners": 2, "museum": true, "led": "#ff00ff"}, listeners counts the museum too
@@ -60,22 +56,16 @@ def heartbeat(stop, args, light):
                 if (listeners, colour) != heard:
                     print(
                         f"Listeners: {listeners} | Museum: {museum} | LED: {colour}",
-                        flush=True
+                        flush=True,
                     )
                     heard = (listeners, colour)
 
             else:
-                print(
-                    f"Heartbeat error: HTTP {response.status_code}",
-                    flush=True
-                )
+                print(f"Heartbeat error: HTTP {response.status_code}", flush=True)
 
         # RequestException includes invalid JSON
         except (requests.RequestException, KeyError, TypeError, ValueError) as exc:
-            print(
-                f"Heartbeat unavailable: {exc}",
-                flush=True
-            )
+            print(f"Heartbeat unavailable: {exc}", flush=True)
 
         if light is not None:
             light.show(listeners, colour)
@@ -86,6 +76,7 @@ def heartbeat(stop, args, light):
 # ---------------------------
 # Upload worker
 # ---------------------------
+
 
 def uploader(stop, args, active):
     session = requests.Session()
@@ -118,10 +109,7 @@ def uploader(stop, args, active):
             if path not in keep:
                 try:
                     path.unlink()
-                    print(
-                        f"Dropped old segment: {path.name}",
-                        flush=True
-                    )
+                    print(f"Dropped old segment: {path.name}", flush=True)
                 except FileNotFoundError:
                     pass
 
@@ -140,10 +128,7 @@ def uploader(stop, args, active):
 
                 if age > MAX_SEGMENT_AGE:
                     path.unlink()
-                    print(
-                        f"Skipped stale segment: {path.name}",
-                        flush=True
-                    )
+                    print(f"Skipped stale segment: {path.name}", flush=True)
                     continue
 
                 seq = int(path.stem)
@@ -162,25 +147,17 @@ def uploader(stop, args, active):
 
                 if response.ok:
                     print(
-                        f"Uploaded segment {seq}: "
-                        f"HTTP {response.status_code}",
-                        flush=True
+                        f"Uploaded segment {seq}: " f"HTTP {response.status_code}",
+                        flush=True,
                     )
                     path.unlink()
 
                 elif response.status_code == 422:
-                    print(
-                        f"Invalid audio, discarding {path.name}",
-                        flush=True
-                    )
+                    print(f"Invalid audio, discarding {path.name}", flush=True)
                     path.unlink()
 
                 else:
-                    print(
-                        f"Upload failed: HTTP "
-                        f"{response.status_code}",
-                        flush=True
-                    )
+                    print(f"Upload failed: HTTP " f"{response.status_code}", flush=True)
                     stop.wait(RETRY_SECONDS)
                     break
 
@@ -188,10 +165,7 @@ def uploader(stop, args, active):
                 continue
 
             except (requests.RequestException, OSError) as exc:
-                print(
-                    f"Connection unavailable: {exc}",
-                    flush=True
-                )
+                print(f"Connection unavailable: {exc}", flush=True)
                 stop.wait(RETRY_SECONDS)
                 break
 
@@ -199,6 +173,7 @@ def uploader(stop, args, active):
 # ---------------------------
 # Main
 # ---------------------------
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -210,7 +185,7 @@ def main():
         "--gain-db",
         type=float,
         default=record.GAIN_DB,
-        help=f"turn the recording up by this many dB, peaks held under -1 dB (default {record.GAIN_DB})"
+        help=f"turn the recording up by this many dB, peaks held under -1 dB (default {record.GAIN_DB})",
     )
 
     args = parser.parse_args()
@@ -229,24 +204,17 @@ def main():
 
     # Start heartbeat worker
     heartbeat_thread = threading.Thread(
-        target=heartbeat,
-        args=(stop, args, light),
-        daemon=True
+        target=heartbeat, args=(stop, args, light), daemon=True
     )
     heartbeat_thread.start()
 
     # Start upload worker
     upload_thread = threading.Thread(
-        target=uploader,
-        args=(stop, args, active),
-        daemon=True
+        target=uploader, args=(stop, args, active), daemon=True
     )
     upload_thread.start()
 
-    print(
-        "Starting continuous microphone capture...",
-        flush=True
-    )
+    print("Starting continuous microphone capture...", flush=True)
 
     try:
         record.record_forever(stop, active, args.gain_db)
@@ -260,10 +228,7 @@ def main():
         if light is not None:
             light.close()
 
-        print(
-            "Node stopped. Pending MP3 files remain on disk.",
-            flush=True
-        )
+        print("Node stopped. Pending MP3 files remain on disk.", flush=True)
 
 
 if __name__ == "__main__":

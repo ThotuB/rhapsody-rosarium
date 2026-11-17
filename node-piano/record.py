@@ -11,7 +11,6 @@ import threading
 import time
 from pathlib import Path
 
-
 # Configuration
 MIC = "plughw:CARD=Microphones,DEV=0"
 DIRECTORY = Path(__file__).parent / "segments"
@@ -34,11 +33,10 @@ STATE_LOCK = threading.Lock()
 # Sequence management
 # ---------------------------
 
+
 def _read_state():
     if STATE.exists():
-        return int(
-            json.loads(STATE.read_text()).get("next_seq", 0)
-        )
+        return int(json.loads(STATE.read_text()).get("next_seq", 0))
     return 0
 
 
@@ -61,25 +59,20 @@ def next_sequence():
         files = list(DIRECTORY.glob("*.mp3"))
 
         if files:
-            previous = max(
-                previous,
-                max(int(p.stem) for p in files) + 1
-            )
+            previous = max(previous, max(int(p.stem) for p in files) + 1)
 
         return previous
 
 
 def segment_files():
     """Return pending recordings in sequence order."""
-    return sorted(
-        DIRECTORY.glob("*.mp3"),
-        key=lambda p: int(p.stem)
-    )
+    return sorted(DIRECTORY.glob("*.mp3"), key=lambda p: int(p.stem))
 
 
 # ---------------------------
 # Continuous recording
 # ---------------------------
+
 
 def record_forever(stop, active, gain_db=GAIN_DB):
     """Record until stop is set; active is set while FFmpeg writes a segment.
@@ -91,37 +84,41 @@ def record_forever(stop, active, gain_db=GAIN_DB):
         seq = next_sequence()
         save_next_seq(seq)
 
-        print(
-            f"Starting FFmpeg at segment {seq}",
-            flush=True
-        )
+        print(f"Starting FFmpeg at segment {seq}", flush=True)
 
         command = [
             "ffmpeg",
             "-nostdin",
             "-hide_banner",
-            "-loglevel", "warning",
-
+            "-loglevel",
+            "warning",
             # Microphone
-            "-f", "alsa",
-            "-i", MIC,
-
+            "-f",
+            "alsa",
+            "-i",
+            MIC,
             # Louder, without clipping (level=0: the limiter only holds peaks down,
             # it doesn't turn everything up again on its own)
-            "-af", f"volume={gain_db}dB,alimiter=limit={LIMIT}:level=0",
-
+            "-af",
+            f"volume={gain_db}dB,alimiter=limit={LIMIT}:level=0",
             # MP3 audio encoding
-            "-ac", "1",
-            "-ar", "44100",
-            "-c:a", "libmp3lame",
-            "-b:a", "128k",
-
+            "-ac",
+            "1",
+            "-ar",
+            "44100",
+            "-c:a",
+            "libmp3lame",
+            "-b:a",
+            "128k",
             # Continuous segmentation
-            "-f", "segment",
-            "-segment_time", str(SEGMENT_SECONDS),
-            "-segment_start_number", str(seq),
-            "-reset_timestamps", "1",
-
+            "-f",
+            "segment",
+            "-segment_time",
+            str(SEGMENT_SECONDS),
+            "-segment_start_number",
+            str(seq),
+            "-reset_timestamps",
+            "1",
             str(DIRECTORY / "%012d.mp3"),
         ]
 
@@ -151,10 +148,7 @@ def record_forever(stop, active, gain_db=GAIN_DB):
                         process.kill()
                         process.wait()
 
-                print(
-                    f"FFmpeg exited: {process.returncode}",
-                    flush=True
-                )
+                print(f"FFmpeg exited: {process.returncode}", flush=True)
 
             active.clear()
 
@@ -162,8 +156,5 @@ def record_forever(stop, active, gain_db=GAIN_DB):
             save_next_seq(next_sequence())
 
         if not stop.is_set():
-            print(
-                "Recording interrupted. Restarting in 3 seconds...",
-                flush=True
-            )
+            print("Recording interrupted. Restarting in 3 seconds...", flush=True)
             stop.wait(3)
